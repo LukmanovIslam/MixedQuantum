@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MQCT Input Generator</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --panel: #ffffff;
+    --panel-2: #f7f6f2;
+    --line: #d9d6cc;
+    --ink: #2a2e35;
+    --ink-dim: #6b7280;
+    --accent: #33373d;
+    --accent-warm: #b9742a;
+    --mono: "JetBrains Mono", "SF Mono", "Consolas", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+    padding: 32px 20px 80px;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  header { margin-bottom: 28px; border-bottom: 1px solid var(--line); padding-bottom: 18px; }
+  header h1 { font-size: 22px; font-weight: 600; letter-spacing: 0.5px; }
+  header h1 .tag {
+    font-family: var(--mono); font-size: 12px; color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 3px;
+    padding: 2px 7px; margin-left: 10px; vertical-align: middle;
+  }
+  header p { color: var(--ink-dim); font-size: 13px; margin-top: 6px; }
+
+  .layout { display: grid; grid-template-columns: 1fr 440px; gap: 24px; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  .block {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .block > h2 {
+    font-family: var(--mono);
+    font-size: 13px; font-weight: 600;
+    color: var(--accent);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    letter-spacing: 0.5px;
+  }
+  .block .body { padding: 16px; }
+
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block; font-size: 12px; color: var(--ink-dim);
+    margin-bottom: 5px; letter-spacing: 0.3px;
+  }
+  .field label .kw { font-family: var(--mono); color: var(--ink); font-size: 11px; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 8px 10px;
+    border-radius: 4px;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--accent);
+  }
+  textarea { resize: vertical; min-height: 64px; }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .row-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+
+  .subhead {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--accent); margin: 4px 0 8px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  .checks { display: flex; flex-wrap: wrap; gap: 14px; }
+  .check {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--ink-dim);
+    font-family: var(--mono);
+  }
+  .check input { width: auto; }
+
+  .hint { font-size: 11px; color: var(--ink-dim); margin-top: 4px; font-style: italic; }
+  .seg {
+    display: inline-flex; border: 1px solid var(--line);
+    border-radius: 4px; overflow: hidden; margin-bottom: 4px;
+  }
+  .seg label {
+    margin: 0; padding: 6px 12px; font-size: 11px;
+    cursor: pointer; color: var(--ink-dim); font-family: var(--mono);
+  }
+  .seg label.active { background: var(--accent); color: #ffffff; }
+
+  .out-panel { position: sticky; top: 24px; }
+  .out-panel pre {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink);
+    white-space: pre;
+    overflow-x: auto;
+    min-height: 320px;
+  }
+  .out-panel .actions { display: flex; gap: 10px; margin-top: 14px; }
+  button {
+    font-family: var(--mono); font-size: 12px;
+    padding: 10px 16px; border-radius: 4px;
+    border: 1px solid var(--accent);
+    cursor: pointer; letter-spacing: 0.5px;
+  }
+  button.primary { background: var(--accent); color: #ffffff; }
+  button.ghost { background: transparent; color: var(--accent); }
+  button:active { transform: translateY(1px); }
+
+  .note {
+    font-size: 11px; color: var(--accent-warm);
+    font-family: var(--mono);
+    background: rgba(185,116,42,0.10);
+    border-left: 2px solid var(--accent-warm);
+    padding: 8px 10px; margin-top: 10px;
+    display: none;
+  }
+  .note.show { display: block; }
+
+  /* validation panel */
+  .vbox { margin-top: 14px; }
+  .vmsg {
+    font-family: var(--mono); font-size: 11px;
+    padding: 8px 10px; margin-bottom: 6px;
+    border-left: 2px solid; border-radius: 0;
+    line-height: 1.45;
+  }
+  .vmsg.err {
+    color: #8a2020;
+    background: rgba(138,32,32,0.07);
+    border-color: #8a2020;
+  }
+  .vmsg.warn {
+    color: var(--accent-warm);
+    background: rgba(185,116,42,0.09);
+    border-color: var(--accent-warm);
+  }
+  .vmsg.ok {
+    color: #2f6b3a;
+    background: rgba(47,107,58,0.08);
+    border-color: #2f6b3a;
+  }
+  .vhead {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--ink-dim); margin: 10px 0 4px;
+    letter-spacing: 0.5px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>MQCT Input Generator <span class="tag">ALL SYS_TYPES</span></h1>
+    <p>Molecule + atom and molecule + molecule systems. Only keywords relevant to the chosen system type are shown.</p>
+  </header>
+
+  <form id="mqct-form">
+  <div class="layout">
+
+    <!-- ================= LEFT: FORM ================= -->
+    <div>
+
+      <!-- $BASIS -->
+      <div class="block">
+        <h2>$BASIS &mdash; quantum part</h2>
+        <div class="body">
+
+          <div class="field">
+            <label>System type <span class="kw">SYS_TYPE</span></label>
+            <select name="sys_type" id="sys_type">
+              {% for code, name in sys_types.items() %}
+              <option value="{{ code }}">{{ code }} &mdash; {{ name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- ===== constants: molecule + atom ===== -->
+          <div class="row st-1 st-2">
+            <div class="field">
+              <label>Rotational <span class="kw">BE</span> (cm&#8315;&#185;)</label>
+              <input type="text" name="be" placeholder="e.g. 1.9225">
+            </div>
+            <div class="field">
+              <label>Centrifugal <span class="kw">DE</span> (cm&#8315;&#185;)</label>
+              <input type="text" name="de" placeholder="e.g. 6.12E-6">
+            </div>
+          </div>
+          <div class="row st-2">
+            <div class="field">
+              <label>Vibrational <span class="kw">WE</span> (cm&#8315;&#185;)</label>
+              <input type="text" name="we" placeholder="e.g. 2169.8">
+            </div>
+            <div class="field">
+              <label>Anharmonicity <span class="kw">XE</span> (cm&#8315;&#185;)</label>
+              <input type="text" name="xe" placeholder="e.g. 13.29">
+            </div>
+          </div>
+          <div class="row-3 st-3 st-4">
+            <div class="field">
+              <label>Constant <span class="kw">A</span></label>
+              <input type="text" name="a" placeholder="e.g. 27.877">
+            </div>
+            <div class="field st-4">
+              <label>Constant <span class="kw">B</span></label>
+              <input type="text" name="b" placeholder="e.g. 9.285">
+            </div>
+            <div class="field">
+              <label>Constant <span class="kw">C</span></label>
+              <input type="text" name="c" placeholder="e.g. 14.512">
+            </div>
+          </div>
+
+          <!-- oblate/prolate declaration -- symmetric tops only (3,7). -->
+          <!-- Not written to the .inp file; used only to validate A vs C. -->
+          <div class="field st-3 st-7">
+            <label>Symmetric top shape (for the A/C check)</label>
+            <div class="seg" id="shape-seg">
+              <label class="active" data-shape="oblate">Oblate (A &gt; C)</label>
+              <label data-shape="prolate">Prolate (A &lt; C)</label>
+            </div>
+            <input type="hidden" name="top_shape" id="top_shape" value="oblate">
+            <div class="hint">Declares the molecule's shape so the generator
+              can check your A/C ordering. Not written to the file.</div>
+          </div>
+
+          <!-- ===== constants: diatom + diatom (5,6) ===== -->
+          <div class="st-5 st-6">
+            <div class="subhead">Molecule 1 (diatom)</div>
+            <div class="row">
+              <div class="field">
+                <label><span class="kw">BE1</span> (cm&#8315;&#185;)</label>
+                <input type="text" name="be1" placeholder="e.g. 1.9982">
+              </div>
+              <div class="field">
+                <label><span class="kw">DE1</span> (cm&#8315;&#185;)</label>
+                <input type="text" name="de1" placeholder="e.g. 5.76E-6">
+              </div>
+            </div>
+            <div class="row st-6">
+              <div class="field">
+                <label><span class="kw">WE1</span> (cm&#8315;&#185;)</label>
+                <input type="text" name="we1" placeholder="vibr. const.">
+              </div>
+              <div class="field">
+                <label><span class="kw">XE1</span> (cm&#8315;&#185;)</label>
+                <input type="text" name="xe1" placeholder="anharmonic.">
+              </div>
+            </div>
+            <div class="subhead">Molecule 2 (diatom)</div>
+            <div class="row">
+              <div class="field">
+                <label><span class="kw">BE2</span> (cm&#8315;&#185;)</label>
+                <input type="text" name="be2" placeholder="e.g. 59.334">
+              </div>
+              <div class="field">
+                <label><span class="kw">DE2</span> (cm&#8315;&#185;)</label>
+                <input type="text" name="de2" placeholder="e.g. 4.71E-2">
+              </div>
+            </div>
+            <div class="row st-6">
+              <div class="field">
+                <label><span class="kw">WE2</span> (cm&#8315;&#185;)</label>
+                <input type="text" name="we2" placeholder="vibr. const.">
+              </div>
+              <div class="field">
+                <label><span class="kw">XE2</span> (cm&#8315;&#185;)</label>
+                <input type="text" name="xe2" placeholder="anharmonic.">
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== constants: top + diatom (7,8) ===== -->
+          <div class="st-7 st-8">
+            <div class="subhead">Molecule 1 (top)</div>
+            <div class="row-3">
+              <div class="field">
+                <label><span class="kw">A</span></label>
+                <input type="text" name="a_td" placeholder="A const.">
+              </div>
+              <div class="field st-8">
+                <label><span class="kw">B</span></label>
+                <input type="text" name="b_td" placeholder="B const.">
+              </div>
+              <div class="field">
+                <label><span class="kw">C</span></label>
+                <input type="text" name="c_td" placeholder="C const.">
+              </div>
+            </div>
+            <div class="subhead">Molecule 2 (rigid diatom)</div>
+            <div class="row">
+              <div class="field">
+                <label><span class="kw">BE2</span> (cm&#8315;&#185;)</label>
+                <input type="text" name="be2" placeholder="e.g. 1.9982">
+              </div>
+              <div class="field">
+                <label><span class="kw">DE2</span> (cm&#8315;&#185;)</label>
+                <input type="text" name="de2" placeholder="e.g. 5.76E-6">
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== constants: top + top (9,0) ===== -->
+          <div class="st-9 st-0">
+            <div class="subhead">Molecule 1 (asymmetric top)</div>
+            <div class="row-3">
+              <div class="field">
+                <label><span class="kw">A1</span></label>
+                <input type="text" name="a1" placeholder="A1">
+              </div>
+              <div class="field">
+                <label><span class="kw">B1</span></label>
+                <input type="text" name="b1" placeholder="B1">
+              </div>
+              <div class="field">
+                <label><span class="kw">C1</span></label>
+                <input type="text" name="c1" placeholder="C1">
+              </div>
+            </div>
+            <div class="subhead" id="mol2-head">Molecule 2</div>
+            <div class="row-3">
+              <div class="field">
+                <label><span class="kw">A2</span></label>
+                <input type="text" name="a2" placeholder="A2">
+              </div>
+              <div class="field st-0">
+                <label><span class="kw">B2</span></label>
+                <input type="text" name="b2" placeholder="B2">
+              </div>
+              <div class="field">
+                <label><span class="kw">C2</span></label>
+                <input type="text" name="c2" placeholder="C2">
+              </div>
+            </div>
+          </div>
+
+          <div class="note show st-3 st-7" id="prolate-note">
+            Symmetric top: oblate &rArr; A &gt; C. For a <b>prolate</b> top enter A &lt; C
+            (opposite the usual convention). B is forced equal to A internally.
+          </div>
+          <div class="note show st-4 st-8 st-9 st-0">
+            Asymmetric top A, B, C must match the x, y, z axes of the PES
+            reference orientation &mdash; not magnitude order.
+          </div>
+
+          <!-- ===== channel specification ===== -->
+          <div class="field">
+            <label>How to specify channels</label>
+            <div class="seg" id="chan-seg">
+              <label class="active" data-mode="list">Explicit list</label>
+              <label data-mode="emax">Energy cutoff</label>
+              <label data-mode="jrange">j range</label>
+            </div>
+            <input type="hidden" name="chan_mode" id="chan_mode" value="list">
+          </div>
+
+          <div class="field chan-list">
+            <label>Channels <span class="kw">CHNLS_LIST</span>
+              &mdash; <span id="chan-fmt">one j per line</span></label>
+            <textarea name="chnls_list" id="chnls_list" placeholder="0&#10;1&#10;2"></textarea>
+            <div class="hint">One channel per line. NMB_CHNLS is counted automatically.</div>
+          </div>
+
+          <!-- emax: molecule + atom -->
+          <div class="field chan-emax st-1 st-2 st-3 st-4">
+            <label>Energy cutoff <span class="kw">EMAX</span> (cm&#8315;&#185;)</label>
+            <input type="text" name="emax" placeholder="e.g. 135.4">
+            <div class="hint">All states below this energy are included.</div>
+          </div>
+          <!-- emax: molecule + molecule -->
+          <div class="row chan-emax st-5 st-6 st-7 st-8 st-9 st-0">
+            <div class="field">
+              <label><span class="kw">EMAX1</span> (cm&#8315;&#185;)</label>
+              <input type="text" name="emax1" placeholder="molecule 1">
+            </div>
+            <div class="field">
+              <label><span class="kw">EMAX2</span> (cm&#8315;&#185;)</label>
+              <input type="text" name="emax2" placeholder="molecule 2">
+            </div>
+          </div>
+
+          <!-- jrange: molecule + atom -->
+          <div class="row chan-jrange st-1 st-2 st-3 st-4">
+            <div class="field">
+              <label><span class="kw">JMIN</span></label>
+              <input type="number" name="jmin" placeholder="0">
+            </div>
+            <div class="field">
+              <label><span class="kw">JMAX</span></label>
+              <input type="number" name="jmax" placeholder="5">
+            </div>
+          </div>
+          <div class="row chan-jrange st-2">
+            <div class="field">
+              <label><span class="kw">VMIN</span></label>
+              <input type="number" name="vmin" placeholder="0">
+            </div>
+            <div class="field">
+              <label><span class="kw">VMAX</span></label>
+              <input type="number" name="vmax" placeholder="1">
+            </div>
+          </div>
+          <!-- jrange: molecule + molecule -->
+          <div class="row-4 chan-jrange st-5 st-6 st-7 st-8 st-9 st-0">
+            <div class="field">
+              <label><span class="kw">JMIN1</span></label>
+              <input type="number" name="jmin1" placeholder="0">
+            </div>
+            <div class="field">
+              <label><span class="kw">JMAX1</span></label>
+              <input type="number" name="jmax1" placeholder="3">
+            </div>
+            <div class="field">
+              <label><span class="kw">JMIN2</span></label>
+              <input type="number" name="jmin2" placeholder="0">
+            </div>
+            <div class="field">
+              <label><span class="kw">JMAX2</span></label>
+              <input type="number" name="jmax2" placeholder="3">
+            </div>
+          </div>
+          <div class="row-4 chan-jrange st-6">
+            <div class="field">
+              <label><span class="kw">VMIN1</span></label>
+              <input type="number" name="vmin1" placeholder="0">
+            </div>
+            <div class="field">
+              <label><span class="kw">VMAX1</span></label>
+              <input type="number" name="vmax1" placeholder="1">
+            </div>
+            <div class="field">
+              <label><span class="kw">VMIN2</span></label>
+              <input type="number" name="vmin2" placeholder="0">
+            </div>
+            <div class="field">
+              <label><span class="kw">VMAX2</span></label>
+              <input type="number" name="vmax2" placeholder="1">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Initial channel <span class="kw">INIT_CHNL</span></label>
+            <input type="text" name="init_chnl" id="init_chnl" placeholder="0">
+            <div class="hint">Excited state here &rArr; quenching calculation.</div>
+          </div>
+
+          <div class="field">
+            <label>Optional flags</label>
+            <div class="checks">
+              <span class="check"><input type="checkbox" name="cs_approx"> CS_APPROX</span>
+              <span class="check"><input type="checkbox" name="symmetry"> SYMMETRY</span>
+              <span class="check st-5 st-6 st-0"><input type="checkbox" name="identical" id="identical"> IDENTICAL</span>
+              <span class="check"><input type="checkbox" name="print_states" checked> PRINT_STATES</span>
+            </div>
+          </div>
+          <div class="note show st-5 st-6 st-0" id="identical-note" style="display:none;">
+            IDENTICAL only valid for two indistinguishable molecules.
+            Specify just the unique channels and one set of constants per molecule.
+          </div>
+
+        </div>
+      </div>
+
+      <!-- $SYSTEM -->
+      <div class="block">
+        <h2>$SYSTEM &mdash; classical part</h2>
+        <div class="body">
+          <div class="field">
+            <label>Job label <span class="kw">LABEL</span></label>
+            <input type="text" name="label" placeholder="e.g. H2O+He">
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>Reduced mass <span class="kw">MASS_RED</span> (amu)</label>
+              <input type="text" name="mass_red" placeholder="e.g. 3.2748">
+            </div>
+            <div class="field">
+              <label>Collision energies <span class="kw">U_ENERGY</span> (cm&#8315;&#185;)</label>
+              <input type="text" name="u_energy" placeholder="100 200 500">
+            </div>
+          </div>
+          <div class="hint" style="margin-top:-8px;margin-bottom:12px;">
+            U_ENERGY is the effective (Billing) energy, not raw kinetic E.
+            NMB_ENERGS counted automatically.
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>Min separation <span class="kw">RMIN</span> (Bohr)</label>
+              <input type="text" name="rmin" placeholder="e.g. 4.5">
+            </div>
+            <div class="field">
+              <label>Max separation <span class="kw">RMAX</span> (Bohr)</label>
+              <input type="text" name="rmax" placeholder="e.g. 20.0">
+            </div>
+          </div>
+          <div class="row-3">
+            <div class="field">
+              <label>Impact param <span class="kw">B_IMPCT</span> (Bohr)</label>
+              <input type="text" name="b_impct" id="b_impct" placeholder="e.g. 10.0">
+            </div>
+            <div class="field">
+              <label><span class="kw">JTOTL</span></label>
+              <input type="number" name="jtotl" id="jtotl" placeholder="0">
+            </div>
+            <div class="field">
+              <label><span class="kw">JTOTU</span></label>
+              <input type="number" name="jtotu" id="jtotu" placeholder="100">
+            </div>
+          </div>
+          <div class="hint" style="margin-top:-8px;margin-bottom:12px;">
+            If B_IMPCT is set, JTOTL/JTOTU are ignored by MQCT.
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>Time step <span class="kw">TIME_STEP</span> (a.u.)</label>
+              <input type="text" name="time_step" placeholder="e.g. 15.0">
+            </div>
+            <div class="field">
+              <label>Time limit <span class="kw">TIME_LIM</span> (a.u.)</label>
+              <input type="text" name="time_lim" placeholder="e.g. 3.5E+6">
+            </div>
+          </div>
+          <div class="field">
+            <label>Monte-Carlo sampling</label>
+            <div class="checks">
+              <span class="check"><input type="checkbox" name="monte_carlo" id="monte_carlo"> MONTE_CARLO</span>
+            </div>
+          </div>
+          <div class="field" id="ntraj-field" style="display:none;">
+            <label>Number of trajectories <span class="kw">NMB_TRAJ</span></label>
+            <input type="number" name="nmb_traj" placeholder="200">
+          </div>
+          <div class="field st-5 st-6 st-0" id="wght-field" style="display:none;">
+            <label>Positive-parity weight <span class="kw">WGHT_POSPAR</span></label>
+            <input type="text" name="wght_pospar" placeholder="default 1.0">
+            <div class="hint">Nuclear-spin weight of the (+) exchange parity. Used with IDENTICAL.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- $POTENTIAL -->
+      <div class="block">
+        <h2>$POTENTIAL &mdash; PES &amp; grids</h2>
+        <div class="body">
+          <div class="row">
+            <div class="field">
+              <label>Energy units <span class="kw">E_UNITS</span></label>
+              <select name="e_units">
+                <option>A.U.</option><option>CM-1</option>
+                <option>KLVN</option><option>KCAL</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Distance units <span class="kw">R_UNITS</span></label>
+              <select name="r_units">
+                <option>A.U.</option><option>ANGS</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>R-grid points <span class="kw">GRD_R</span></label>
+            <input type="number" name="grd_r" placeholder="50">
+          </div>
+
+          <!-- angular grids: molecule + atom (single value) -->
+          <div class="st-1 st-2 st-3 st-4">
+            <div class="row-3">
+              <div class="field">
+                <label>&beta;-grid <span class="kw">GRD_ANG2</span></label>
+                <input type="number" name="grd_ang2" placeholder="20">
+              </div>
+              <div class="field st-3 st-4">
+                <label>&gamma;-grid <span class="kw">GRD_ANG3</span></label>
+                <input type="number" name="grd_ang3" placeholder="40">
+              </div>
+              <div class="field st-2">
+                <label>vib. grid <span class="kw">GRD_VIB</span></label>
+                <input type="number" name="grd_vib" placeholder="20">
+              </div>
+            </div>
+            <div class="hint st-1 st-2">
+              Diatom + atom: only the &beta; grid (GRD_ANG2) is used; others are dummy.
+            </div>
+          </div>
+
+          <!-- angular grids: molecule + molecule (two values each) -->
+          <div class="st-5 st-6 st-7 st-8 st-9 st-0">
+            <div class="hint" style="margin-bottom:8px;">
+              Molecule + molecule: each grid keyword takes two values
+              (molecule 1, molecule 2). Some entries are dummy per SYS_TYPE
+              &mdash; leave dummy entries as 1.
+            </div>
+            <div class="subhead">GRD_ANG1 (&alpha;)</div>
+            <div class="row">
+              <div class="field">
+                <label>entry 1</label>
+                <input type="number" name="grd_ang1_a" placeholder="1">
+              </div>
+              <div class="field">
+                <label>entry 2</label>
+                <input type="number" name="grd_ang1_b" placeholder="40">
+              </div>
+            </div>
+            <div class="subhead">GRD_ANG2 (&beta;)</div>
+            <div class="row">
+              <div class="field">
+                <label>entry 1</label>
+                <input type="number" name="grd_ang2_a" placeholder="24">
+              </div>
+              <div class="field">
+                <label>entry 2</label>
+                <input type="number" name="grd_ang2_b" placeholder="24">
+              </div>
+            </div>
+            <div class="subhead">GRD_ANG3 (&gamma;)</div>
+            <div class="row">
+              <div class="field">
+                <label>entry 1</label>
+                <input type="number" name="grd_ang3_a" placeholder="1">
+              </div>
+              <div class="field">
+                <label>entry 2</label>
+                <input type="number" name="grd_ang3_b" placeholder="1">
+              </div>
+            </div>
+            <div class="st-6">
+              <div class="subhead">GRD_VIB</div>
+              <div class="row">
+                <div class="field">
+                  <label>entry 1</label>
+                  <input type="number" name="grd_vib_a" placeholder="20">
+                </div>
+                <div class="field">
+                  <label>entry 2</label>
+                  <input type="number" name="grd_vib_b" placeholder="20">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="field" style="margin-top:14px;">
+            <label>Matrix handling</label>
+            <div class="checks">
+              <span class="check"><input type="checkbox" name="save_mtrx"> SAVE_MTRX</span>
+              <span class="check"><input type="checkbox" name="read_mtrx"> READ_MTRX</span>
+              <span class="check"><input type="checkbox" name="prog_run_no"> PROG_RUN=NO</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ================= RIGHT: OUTPUT ================= -->
+    <div>
+      <div class="block out-panel">
+        <h2>Generated .inp</h2>
+        <div class="body">
+          <pre id="output">Fill the form, then press Generate.</pre>
+          <div class="actions">
+            <button type="button" class="primary" id="gen-btn">Generate</button>
+            <button type="button" class="ghost" id="copy-btn">Copy</button>
+            <button type="button" class="ghost" id="dl-btn">Download</button>
+          </div>
+          <div class="vbox" id="vbox"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  </form>
+</div>
+
+<script>
+const form = document.getElementById('mqct-form');
+const sysSelect = document.getElementById('sys_type');
+
+// Show or hide a region AND disable/enable the form controls inside it.
+// Disabled controls are not submitted, so hidden fields never leak stale
+// values into the generated input file.
+function setVisible(el, show) {
+  el.style.display = show ? '' : 'none';
+  el.querySelectorAll('input, select, textarea').forEach(c => {
+    c.disabled = !show;
+  });
+  // the element itself may be a control (rare here, but be safe)
+  if (el.matches('input, select, textarea')) el.disabled = !show;
+}
+
+function applySysType() {
+  const st = sysSelect.value;
+  const mode = chanModeInput.value;
+  // An element may carry several st-N classes (e.g. "st-5 st-6").
+  // It should be visible if ANY of them matches the current type.
+  document.querySelectorAll('[class*="st-"]').forEach(el => {
+    const tags = [...el.classList].filter(c => /^st-[0-9]$/.test(c));
+    if (tags.length === 0) return;
+    let show = tags.includes('st-' + st);
+    // channel-mode rows are additionally gated by the active mode
+    if (el.classList.contains('chan-list'))   show = show && (mode === 'list');
+    if (el.classList.contains('chan-emax'))   show = show && (mode === 'emax');
+    if (el.classList.contains('chan-jrange')) show = show && (mode === 'jrange');
+    setVisible(el, show);
+  });
+  const m2 = document.getElementById('mol2-head');
+  if (m2) m2.textContent = (st === '9')
+    ? 'Molecule 2 (symmetric top)'
+    : 'Molecule 2 (asymmetric top)';
+  toggleIdenticalNote();
+  toggleWght();
+  toggleNtraj();
+  updateChannelFormat();
+}
+
+const chanSeg = document.getElementById('chan-seg');
+const chanModeInput = document.getElementById('chan_mode');
+chanSeg.querySelectorAll('label').forEach(lbl => {
+  lbl.addEventListener('click', () => {
+    chanSeg.querySelectorAll('label').forEach(l => l.classList.remove('active'));
+    lbl.classList.add('active');
+    chanModeInput.value = lbl.dataset.mode;
+    applyChanMode();
+  });
+});
+
+const shapeSeg = document.getElementById('shape-seg');
+const shapeInput = document.getElementById('top_shape');
+shapeSeg.querySelectorAll('label').forEach(lbl => {
+  lbl.addEventListener('click', () => {
+    shapeSeg.querySelectorAll('label').forEach(l => l.classList.remove('active'));
+    lbl.classList.add('active');
+    shapeInput.value = lbl.dataset.shape;
+  });
+});
+function applyChanMode() {
+  const mode = chanModeInput.value;
+  // the plain channel-list textarea has no st-N class; toggle it directly
+  document.querySelectorAll('.chan-list').forEach(e =>
+    setVisible(e, mode === 'list'));
+  // chan-emax / chan-jrange variants carry st-N classes -> applySysType handles them
+  applySysType();
+}
+
+const CHAN_LABELS = {{ channel_labels | tojson }};
+function updateChannelFormat() {
+  const labels = CHAN_LABELS[sysSelect.value] || ['j'];
+  document.getElementById('chan-fmt').textContent =
+    'one (' + labels.join(', ') + ') tuple per line';
+  const ta = document.getElementById('chnls_list');
+  ta.placeholder = labels.length === 1
+    ? '0\n1\n2'
+    : labels.map(()=>'0').join(',') + '\n' +
+      labels.map((_,i)=> i===0?'1':'0').join(',');
+}
+
+const monteBox = document.getElementById('monte_carlo');
+function toggleNtraj() {
+  setVisible(document.getElementById('ntraj-field'), monteBox.checked);
+}
+monteBox.addEventListener('change', toggleNtraj);
+
+const identicalBox = document.getElementById('identical');
+function toggleIdenticalNote() {
+  const st = sysSelect.value;
+  const noteEl = document.getElementById('identical-note');
+  const show = ['5','6','0'].includes(st) && identicalBox.checked;
+  if (noteEl) noteEl.style.display = show ? 'block' : 'none';
+}
+function toggleWght() {
+  const st = sysSelect.value;
+  const wf = document.getElementById('wght-field');
+  const show = ['5','6','0'].includes(st) && identicalBox.checked;
+  if (wf) setVisible(wf, show);
+}
+identicalBox.addEventListener('change', () => { toggleIdenticalNote(); toggleWght(); });
+
+function renderValidation(errors, warnings) {
+  const vbox = document.getElementById('vbox');
+  vbox.innerHTML = '';
+  if (errors.length === 0 && warnings.length === 0) {
+    vbox.innerHTML =
+      '<div class="vmsg ok">No problems found. Input looks consistent.</div>';
+    return;
+  }
+  if (errors.length) {
+    const h = document.createElement('div');
+    h.className = 'vhead';
+    h.textContent = errors.length + ' error(s) -- must fix before running';
+    vbox.appendChild(h);
+    errors.forEach(e => {
+      const d = document.createElement('div');
+      d.className = 'vmsg err';
+      d.textContent = e;
+      vbox.appendChild(d);
+    });
+  }
+  if (warnings.length) {
+    const h = document.createElement('div');
+    h.className = 'vhead';
+    h.textContent = warnings.length + ' warning(s) -- review';
+    vbox.appendChild(h);
+    warnings.forEach(w => {
+      const d = document.createElement('div');
+      d.className = 'vmsg warn';
+      d.textContent = w;
+      vbox.appendChild(d);
+    });
+  }
+}
+
+async function generate(download) {
+  const data = new FormData(form);
+  if (download) data.append('download', '1');
+  const resp = await fetch('/generate', { method: 'POST', body: data });
+
+  // A successful download returns the raw .inp file (not JSON).
+  const ctype = resp.headers.get('Content-Type') || '';
+  if (download && resp.ok && ctype.indexOf('text/plain') !== -1) {
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (data.get('label') || 'mqct') + '.inp';
+    a.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
+
+  // Otherwise the server returned JSON: preview, or a blocked download.
+  const res = await resp.json();
+  document.getElementById('output').textContent = res.text || '';
+  renderValidation(res.errors || [], res.warnings || []);
+  if (download && !res.ok) {
+    document.getElementById('vbox').scrollIntoView({ behavior: 'smooth' });
+  }
+}
+document.getElementById('gen-btn').addEventListener('click', () => generate(false));
+document.getElementById('dl-btn').addEventListener('click', () => generate(true));
+document.getElementById('copy-btn').addEventListener('click', () => {
+  navigator.clipboard.writeText(document.getElementById('output').textContent);
+});
+
+sysSelect.addEventListener('change', applySysType);
+applySysType();
+applyChanMode();
+</script>
+</body>
+</html>
