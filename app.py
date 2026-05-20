@@ -10,6 +10,8 @@ Run:
 Then open http://127.0.0.1:5000 in a browser.
 """
 
+import re
+
 from flask import Flask, render_template, request, Response, jsonify
 
 app = Flask(__name__)
@@ -59,11 +61,28 @@ def num(value, default=None):
     return value if value else default
 
 
+def tidy_number(s):
+    """
+    Normalise a numeric string for the .inp file: uppercase the
+    exponent marker (6.12e-6 -> 6.12E-6). The '+' after E is kept --
+    MQCT's REAL_E_FMT_READING parser (used for TIME_LIM) requires an
+    explicit sign after E, so '3.5E+6' is valid but '3.5E6' crashes.
+    Non-numeric strings are returned unchanged, so labels are untouched.
+    """
+    if s is None:
+        return s
+    try:
+        float(s)
+    except (TypeError, ValueError):
+        return s            # not a number -- leave it alone
+    return s.replace("e", "E")
+
+
 def add(lst, form, key, kw=None):
     """Append 'KW=value' to lst if the form field is non-empty."""
     v = num(form.get(key))
     if v is not None:
-        lst.append(f"{kw or key.upper()}={v}")
+        lst.append(f"{kw or key.upper()}={tidy_number(v)}")
 
 
 def parse_channels(form):
@@ -157,7 +176,7 @@ def validate(form):
         need("c_td", "C")
         if st == "8":
             need("b_td", "B")
-        need("be2", "BE2")
+        need("be_td", "BE")  # diatom partner -- parser token is BE, not BE2
     if st in ("9", "0"):
         need("a1", "A1")
         need("b1", "B1")
@@ -283,6 +302,26 @@ def validate(form):
         warnings.append("TIME_STEP not set -- propagation needs a step size; "
                         "check convergence of energy/norm.")
 
+    # ---- strict E-format fields ----
+    # MQCT's REAL_E_FMT_READING parser (used for TIME_LIM, and for DE on
+    # SYS_TYPE 1/2/7/8) demands a value of the exact form  X.XE+Y  --
+    # it requires a decimal dot, an 'E', AND an explicit sign after E.
+    # A plain integer or a dotless/signless value crashes the run.
+    e_fmt = re.compile(r"^-?\d*\.\d+[eE][+-]\d+$")
+
+    def check_efmt(field, kw):
+        v = num(form.get(field))
+        if v and not e_fmt.match(v):
+            errors.append(f"{kw}='{v}' must be in scientific form like "
+                           f"3.5E+6 (decimal point, 'E', and an explicit "
+                           f"+/- sign are all required by MQCT's parser).")
+
+    check_efmt("time_lim", "TIME_LIM")
+    if st in ("1", "2", "7", "8"):
+        check_efmt("de", "DE") if st in ("1", "2") else None
+        if st in ("7", "8"):
+            check_efmt("de_td", "DE")  # diatom partner's DE, written as DE
+
     return errors, warnings
 
 
@@ -319,13 +358,16 @@ def build_input(form):
         add(basis, form, "we2", "WE2")
         add(basis, form, "xe2", "XE2")
     if st in ("7", "8"):
-        # molecule 1 is a top (A,B,C); molecule 2 is a rigid diatom (BE2,DE2)
+        # molecule 1 is a top (A,B,C); molecule 2 is a rigid diatom.
+        # The parser reads the diatom's constant as plain BE/DE (the
+        # 'BE=' token, CASE 7 in iotest.f) -- NOT BE2/DE2. Using BE2
+        # here makes MQCT stop with "ERROR: SUPPLY BE".
         add(basis, form, "a_td", "A")
         if st == "8":
             add(basis, form, "b_td", "B")
         add(basis, form, "c_td", "C")
-        add(basis, form, "be2", "BE2")
-        add(basis, form, "de2", "DE2")
+        add(basis, form, "be_td", "BE")
+        add(basis, form, "de_td", "DE")
     if st in ("9", "0"):
         add(basis, form, "a1", "A1")
         add(basis, form, "b1", "B1")
@@ -405,7 +447,7 @@ def build_input(form):
     elist = [e.strip() for e in energies.replace(",", " ").split() if e.strip()]
     if elist:
         system.append(f"NMB_ENERGS={len(elist)}")
-        system.append("U_ENERGY=" + ", ".join(elist))
+        system.append("U_ENERGY=" + ", ".join(tidy_number(e) for e in elist))
 
     b_impct = num(form.get("b_impct"))
     if b_impct:
@@ -474,6 +516,189 @@ def build_input(form):
     return "\n".join(lines) + "\n"
 
 
+# ---------------------------------------------------------------------------
+# Reverse direction: parse an existing .inp file back into form fields.
+# ---------------------------------------------------------------------------
+
+def split_blocks(text):
+    """
+    Return {'BASIS': '...', 'SYSTEM': '...', 'POTENTIAL': '...'} with the
+    raw inner text of each block. Tolerant of tabs, CRLF, leading spaces.
+    """
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    blocks = {}
+    cur = None
+    buf = []
+    for line in text.split("\n"):
+        s = line.strip()
+        up = s.upper()
+        if up.startswith("$BASIS"):
+            cur, buf = "BASIS", []
+        elif up.startswith("$SYSTEM"):
+            cur, buf = "SYSTEM", []
+        elif up.startswith("$POTENTIAL"):
+            cur, buf = "POTENTIAL", []
+        elif up.startswith("$END"):
+            if cur:
+                blocks[cur] = " ".join(buf)
+            cur = None
+        elif cur is not None:
+            buf.append(s)
+    return blocks
+
+
+def tokenize_block(block_text):
+    """
+    Turn 'A = 27.877, B = 9.285, CHNLS_LIST = 0,0,0, 1,0,1' into a list of
+    (KEYWORD, value) pairs. A keyword is an all-caps token immediately
+    followed by '='. Everything up to the next keyword is the value, with
+    any trailing comma stripped.
+    """
+    # find positions of  WORD=
+    kw = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\s*=")
+    matches = list(kw.finditer(block_text))
+    pairs = []
+    for i, m in enumerate(matches):
+        key = m.group(1).upper()
+        start = m.end()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(block_text)
+        val = block_text[start:end].strip()
+        val = val.rstrip(",").strip()
+        # if the value ends right before the next keyword, a trailing
+        # comma may already be gone; also strip a dangling comma
+        pairs.append((key, val))
+    return pairs
+
+
+def parse_inp(text):
+    """
+    Parse a full .inp file into a flat dict of form-field names -> values,
+    suitable for repopulating the GUI. Best-effort: unknown keywords are
+    ignored. Returns (fields, notes) where notes lists anything skipped.
+    """
+    fields = {}
+    notes = []
+    blocks = split_blocks(text)
+    if not blocks:
+        return fields, ["No $BASIS / $SYSTEM / $POTENTIAL blocks found."]
+
+    basis = dict(tokenize_block(blocks.get("BASIS", "")))
+    system = dict(tokenize_block(blocks.get("SYSTEM", "")))
+    pot = dict(tokenize_block(blocks.get("POTENTIAL", "")))
+
+    st = basis.get("SYS_TYPE", "1").strip()
+    fields["sys_type"] = st
+
+    # ---- constants, mapped to the form field names per SYS_TYPE ----
+    def take(src, key, field):
+        if key in src and src[key] != "":
+            fields[field] = src[key]
+
+    if st in ("1", "2"):
+        take(basis, "BE", "be"); take(basis, "DE", "de")
+    if st == "2":
+        take(basis, "WE", "we"); take(basis, "XE", "xe")
+    if st in ("3", "4"):
+        take(basis, "A", "a"); take(basis, "C", "c")
+        if st == "4":
+            take(basis, "B", "b")
+    if st in ("5", "6"):
+        take(basis, "BE1", "be1"); take(basis, "DE1", "de1")
+        take(basis, "BE2", "be2"); take(basis, "DE2", "de2")
+    if st == "6":
+        take(basis, "WE1", "we1"); take(basis, "XE1", "xe1")
+        take(basis, "WE2", "we2"); take(basis, "XE2", "xe2")
+    if st in ("7", "8"):
+        take(basis, "A", "a_td"); take(basis, "C", "c_td")
+        if st == "8":
+            take(basis, "B", "b_td")
+        take(basis, "BE", "be_td"); take(basis, "DE", "de_td")
+    if st in ("9", "0"):
+        take(basis, "A1", "a1"); take(basis, "B1", "b1"); take(basis, "C1", "c1")
+        take(basis, "A2", "a2"); take(basis, "C2", "c2")
+        if st == "0":
+            take(basis, "B2", "b2")
+
+    # ---- channels ----
+    if "CHNLS_LIST" in basis:
+        fields["chan_mode"] = "list"
+        width = len(CHANNEL_LABELS.get(st, ["j"]))
+        toks = [t for t in basis["CHNLS_LIST"].replace(",", " ").split() if t]
+        rows = [",".join(toks[i:i + width]) for i in range(0, len(toks), width)]
+        fields["chnls_list"] = "\n".join(rows)
+    elif "EMAX" in basis or "EMAX1" in basis:
+        fields["chan_mode"] = "emax"
+        take(basis, "EMAX", "emax")
+        take(basis, "EMAX1", "emax1"); take(basis, "EMAX2", "emax2")
+    elif "JMIN" in basis or "JMIN1" in basis:
+        fields["chan_mode"] = "jrange"
+        for k in ("JMIN", "JMAX", "JMIN1", "JMAX1", "JMIN2", "JMAX2",
+                  "VMIN", "VMAX", "VMIN1", "VMAX1", "VMIN2", "VMAX2"):
+            take(basis, k, k.lower())
+
+    if "INIT_CHNL" in basis:
+        fields["init_chnl"] = basis["INIT_CHNL"].replace(" ", "")
+
+    # ---- basis flags ----
+    def flag(src, key, field):
+        if src.get(key, "NO").upper() == "YES":
+            fields[field] = "on"
+    flag(basis, "CS_APPROX", "cs_approx")
+    flag(basis, "SYMMETRY", "symmetry")
+    flag(basis, "IDENTICAL", "identical")
+    flag(basis, "PRINT_STATES", "print_states")
+
+    # ---- $SYSTEM ----
+    if "LABEL" in system:
+        fields["label"] = system["LABEL"].strip().strip('"')
+    for k in ("MASS_RED", "RMIN", "RMAX", "B_IMPCT", "JTOTL", "JTOTU",
+              "TIME_STEP", "TIME_LIM", "NMB_TRAJ", "WGHT_POSPAR"):
+        take(system, k, k.lower())
+    if "U_ENERGY" in system:
+        fields["u_energy"] = system["U_ENERGY"].replace(",", " ").split() \
+            and " ".join(system["U_ENERGY"].replace(",", " ").split())
+    flag(system, "MONTE_CARLO", "monte_carlo")
+
+    # ---- $POTENTIAL ----
+    for k in ("E_UNITS", "R_UNITS"):
+        take(pot, k, k.lower())
+    take(pot, "GRD_R", "grd_r")
+    if st in MOL_ATOM:
+        take(pot, "GRD_ANG2", "grd_ang2")
+        take(pot, "GRD_ANG3", "grd_ang3")
+        take(pot, "GRD_VIB", "grd_vib")
+    else:
+        # molecule + molecule: each GRD_ANG* holds two comma-sep values
+        for src_key, fa, fb in (("GRD_ANG1", "grd_ang1_a", "grd_ang1_b"),
+                                ("GRD_ANG2", "grd_ang2_a", "grd_ang2_b"),
+                                ("GRD_ANG3", "grd_ang3_a", "grd_ang3_b"),
+                                ("GRD_VIB", "grd_vib_a", "grd_vib_b")):
+            if src_key in pot:
+                parts = [p for p in pot[src_key].replace(",", " ").split() if p]
+                if len(parts) >= 1:
+                    fields[fa] = parts[0]
+                if len(parts) >= 2:
+                    fields[fb] = parts[1]
+    flag(pot, "SAVE_MTRX", "save_mtrx")
+    flag(pot, "READ_MTRX", "read_mtrx")
+    if pot.get("PROG_RUN", "YES").upper() == "NO":
+        fields["prog_run_no"] = "on"
+
+    # ---- note anything we recognised but don't expose in the form ----
+    known_basis = {"SYS_TYPE", "BE", "DE", "WE", "XE", "A", "B", "C",
+                   "BE1", "DE1", "BE2", "DE2", "WE1", "XE1", "WE2", "XE2",
+                   "A1", "B1", "C1", "A2", "B2", "C2", "CHNLS_LIST",
+                   "NMB_CHNLS", "EMAX", "EMAX1", "EMAX2", "JMIN", "JMAX",
+                   "JMIN1", "JMAX1", "JMIN2", "JMAX2", "VMIN", "VMAX",
+                   "VMIN1", "VMAX1", "VMIN2", "VMAX2", "INIT_CHNL",
+                   "CS_APPROX", "SYMMETRY", "IDENTICAL", "PRINT_STATES"}
+    for k in basis:
+        if k not in known_basis:
+            notes.append(f"$BASIS keyword '{k}' is not editable in the form "
+                          "-- it was dropped. Re-add it by hand if needed.")
+    return fields, notes
+
+
 @app.route("/")
 def index():
     return render_template(
@@ -481,6 +706,23 @@ def index():
         sys_types=SYS_TYPES,
         channel_labels=CHANNEL_LABELS,
     )
+
+
+@app.route("/parse", methods=["POST"])
+def parse():
+    """Accept an uploaded .inp file, return form fields as JSON."""
+    text = ""
+    if "file" in request.files and request.files["file"].filename:
+        text = request.files["file"].read().decode("utf-8", errors="replace")
+    elif request.form.get("text"):
+        text = request.form["text"]
+    if not text.strip():
+        return jsonify(ok=False, error="No file content received."), 400
+    try:
+        fields, notes = parse_inp(text)
+    except Exception as exc:                       # noqa: BLE001
+        return jsonify(ok=False, error=f"Could not parse file: {exc}"), 400
+    return jsonify(ok=True, fields=fields, notes=notes)
 
 
 @app.route("/generate", methods=["POST"])
@@ -506,4 +748,6 @@ def generate():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    # debug=False: the Werkzeug debugger allows arbitrary code execution
+    # if the port is reachable. host=127.0.0.1 keeps it local-only.
+    app.run(debug=False, host="127.0.0.1", port=5000)
