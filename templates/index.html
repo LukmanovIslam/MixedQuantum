@@ -35,6 +35,18 @@
   }
   header p { color: var(--ink-dim); font-size: 13px; margin-top: 6px; }
 
+  .loadbar { margin-top: 12px; display: flex; align-items: center; gap: 12px; }
+  .loadbtn {
+    font-family: var(--mono); font-size: 12px;
+    padding: 7px 14px; border-radius: 4px;
+    border: 1px solid var(--accent); color: var(--accent);
+    background: transparent; cursor: pointer; letter-spacing: 0.5px;
+  }
+  .loadbtn:hover { background: var(--accent); color: #fff; }
+  .loadnote { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); }
+  .loadnote.err { color: #8a2020; }
+  .loadnote.ok  { color: #2f6b3a; }
+
   .layout { display: grid; grid-template-columns: 1fr 440px; gap: 24px; }
   @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
@@ -119,6 +131,23 @@
     overflow-x: auto;
     min-height: 320px;
   }
+  /* incomplete-output state: dim the preview so a skeleton file is
+     never mistaken for a finished one */
+  .out-panel pre.incomplete {
+    opacity: 0.55;
+    border-style: dashed;
+    border-color: #8a2020;
+  }
+  .out-banner {
+    font-family: var(--mono); font-size: 11px;
+    padding: 7px 10px; margin-bottom: 8px;
+    border-radius: 4px; display: none;
+  }
+  .out-banner.show { display: block; }
+  .out-banner.incomplete {
+    color: #8a2020; background: rgba(138,32,32,0.08);
+    border: 1px solid #8a2020;
+  }
   .out-panel .actions { display: flex; gap: 10px; margin-top: 14px; }
   button {
     font-family: var(--mono); font-size: 12px;
@@ -175,6 +204,11 @@
   <header>
     <h1>MQCT Input Generator <span class="tag">ALL SYS_TYPES</span></h1>
     <p>Molecule + atom and molecule + molecule systems. Only keywords relevant to the chosen system type are shown.</p>
+    <div class="loadbar">
+      <label for="inp-file" class="loadbtn">Load existing .inp file</label>
+      <input type="file" id="inp-file" accept=".inp,.txt,text/plain" hidden>
+      <span class="loadnote" id="load-note"></span>
+    </div>
   </header>
 
   <form id="mqct-form">
@@ -312,12 +346,12 @@
             <div class="subhead">Molecule 2 (rigid diatom)</div>
             <div class="row">
               <div class="field">
-                <label><span class="kw">BE2</span> (cm&#8315;&#185;)</label>
-                <input type="text" name="be2" placeholder="e.g. 1.9982">
+                <label><span class="kw">BE</span> (cm&#8315;&#185;)</label>
+                <input type="text" name="be_td" placeholder="e.g. 1.9982">
               </div>
               <div class="field">
-                <label><span class="kw">DE2</span> (cm&#8315;&#185;)</label>
-                <input type="text" name="de2" placeholder="e.g. 5.76E-6">
+                <label><span class="kw">DE</span> (cm&#8315;&#185;)</label>
+                <input type="text" name="de_td" placeholder="e.g. 5.76E-6">
               </div>
             </div>
           </div>
@@ -678,6 +712,7 @@
       <div class="block out-panel">
         <h2>Generated .inp</h2>
         <div class="body">
+          <div class="out-banner incomplete" id="out-banner"></div>
           <pre id="output">Fill the form, then press Generate.</pre>
           <div class="actions">
             <button type="button" class="primary" id="gen-btn">Generate</button>
@@ -798,7 +833,23 @@ identicalBox.addEventListener('change', () => { toggleIdenticalNote(); toggleWgh
 
 function renderValidation(errors, warnings) {
   const vbox = document.getElementById('vbox');
+  const pre = document.getElementById('output');
+  const banner = document.getElementById('out-banner');
   vbox.innerHTML = '';
+
+  // Problem 5: make an incomplete file visually obvious -- dim the
+  // preview and show a banner so a skeleton is never read as final.
+  if (errors.length) {
+    pre.classList.add('incomplete');
+    banner.classList.add('show');
+    banner.textContent = 'Incomplete -- ' + errors.length +
+      ' error(s) below. This file is NOT ready to run.';
+  } else {
+    pre.classList.remove('incomplete');
+    banner.classList.remove('show');
+    banner.textContent = '';
+  }
+
   if (errors.length === 0 && warnings.length === 0) {
     vbox.innerHTML =
       '<div class="vmsg ok">No problems found. Input looks consistent.</div>';
@@ -860,6 +911,83 @@ document.getElementById('gen-btn').addEventListener('click', () => generate(fals
 document.getElementById('dl-btn').addEventListener('click', () => generate(true));
 document.getElementById('copy-btn').addEventListener('click', () => {
   navigator.clipboard.writeText(document.getElementById('output').textContent);
+});
+
+// ---- load an existing .inp file ----------------------------------------
+function setSegment(segId, hiddenId, dataAttr, value) {
+  const seg = document.getElementById(segId);
+  if (!seg) return;
+  let matched = false;
+  seg.querySelectorAll('label').forEach(l => {
+    const on = l.dataset[dataAttr] === value;
+    l.classList.toggle('active', on);
+    if (on) matched = true;
+  });
+  const h = document.getElementById(hiddenId);
+  if (h && matched) h.value = value;
+}
+
+function applyParsedFields(fields) {
+  // 1. SYS_TYPE first, so the form reshapes before we fill it
+  if (fields.sys_type !== undefined) {
+    sysSelect.value = fields.sys_type;
+    applySysType();
+  }
+  // 2. channel mode segment, then reshape channel rows
+  if (fields.chan_mode) {
+    setSegment('chan-seg', 'chan_mode', 'mode', fields.chan_mode);
+    applyChanMode();
+  }
+  // 3. every other field by name
+  Object.keys(fields).forEach(name => {
+    if (name === 'sys_type' || name === 'chan_mode') return;
+    const els = form.querySelectorAll('[name="' + name + '"]');
+    if (!els.length) return;
+    const el = els[0];
+    const val = fields[name];
+    if (el.type === 'checkbox') {
+      el.checked = (val === 'on' || val === true || val === 'YES');
+      el.dispatchEvent(new Event('change'));
+    } else {
+      el.value = val;
+    }
+  });
+  // 4. re-run dependent toggles (Monte-Carlo trajectory field, etc.)
+  applySysType();
+  if (fields.chan_mode) applyChanMode();
+}
+
+document.getElementById('inp-file').addEventListener('change', async (ev) => {
+  const file = ev.target.files[0];
+  const note = document.getElementById('load-note');
+  if (!file) return;
+  const data = new FormData();
+  data.append('file', file);
+  note.className = 'loadnote';
+  note.textContent = 'Reading ' + file.name + ' ...';
+  try {
+    const resp = await fetch('/parse', { method: 'POST', body: data });
+    const res = await resp.json();
+    if (!res.ok) {
+      note.className = 'loadnote err';
+      note.textContent = res.error || 'Could not parse file.';
+      return;
+    }
+    applyParsedFields(res.fields);
+    let msg = 'Loaded ' + file.name + '.';
+    if (res.notes && res.notes.length) {
+      msg += ' ' + res.notes.length + ' keyword(s) not editable here -- '
+           + 'check the file.';
+      note.className = 'loadnote err';
+    } else {
+      note.className = 'loadnote ok';
+    }
+    note.textContent = msg;
+  } catch (e) {
+    note.className = 'loadnote err';
+    note.textContent = 'Load failed: ' + e;
+  }
+  ev.target.value = '';   // allow re-loading the same file
 });
 
 sysSelect.addEventListener('change', applySysType);
