@@ -10,7 +10,10 @@ Run:
 Then open http://127.0.0.1:5000 in a browser.
 """
 
+import io
+import os
 import re
+import zipfile
 
 from flask import Flask, render_template, request, Response, jsonify
 
@@ -76,6 +79,19 @@ def tidy_number(s):
     except (TypeError, ValueError):
         return s            # not a number -- leave it alone
     return s.replace("e", "E")
+
+
+def safe_filename(name):
+    """
+    Make a string safe to use as a download filename: keep only letters,
+    digits, dot, underscore and hyphen; everything else (spaces, '+',
+    slashes, etc.) becomes '_'. Avoids browsers mangling the
+    Content-Disposition header (e.g. decoding '+' as a space).
+    """
+    name = (name or "mqct").strip()
+    cleaned = "".join(c if (c.isalnum() or c in "._-") else "_"
+                      for c in name)
+    return cleaned or "mqct"
 
 
 def add(lst, form, key, kw=None):
@@ -325,8 +341,19 @@ def validate(form):
     return errors, warnings
 
 
-def build_input(form):
-    """Assemble the MQCT .inp text from submitted form fields."""
+def build_input(form, overrides=None):
+    """
+    Assemble the MQCT .inp text from submitted form fields.
+
+    `overrides` is an optional dict used by the multi-run workflows
+    (feature #5). Recognised keys:
+      basis_extra : list of extra lines to append to $BASIS
+      pot_force   : dict of keyword->value forced into $POTENTIAL,
+                    overriding the form's matrix-handling checkboxes
+      nmb_chnls   : if set, replace the channel list with a single
+                    initial channel (used for the AT-MQCT first run)
+    """
+    overrides = overrides or {}
     st = form.get("sys_type", "1")
     lines = []
 
@@ -379,7 +406,16 @@ def build_input(form):
 
     # --- channels: explicit list / energy cutoff / j-range ---
     chan_mode = form.get("chan_mode", "list")
-    if chan_mode == "list":
+    at_first = overrides.get("at_first_run", False)
+    init = num(form.get("init_chnl"))
+    if init:
+        init = ",".join(p for p in init.replace(",", " ").split() if p)
+
+    if at_first and init:
+        # AT-MQCT first ("adiabatic") run: basis is just the initial state
+        basis.append("NMB_CHNLS=1")
+        basis.append("CHNLS_LIST=" + init)
+    elif chan_mode == "list":
         raw = num(form.get("chnls_list"), "")
         tuples = [t.strip() for t in raw.replace("\n", ";").split(";") if t.strip()]
         flat = []
@@ -414,9 +450,7 @@ def build_input(form):
                 add(basis, form, "vmin", "VMIN")
                 add(basis, form, "vmax", "VMAX")
 
-    init = num(form.get("init_chnl"))
     if init:
-        init = ",".join(p for p in init.replace(",", " ").split() if p)
         basis.append(f"INIT_CHNL={init}")
 
     # --- optional flags ---
@@ -428,6 +462,9 @@ def build_input(form):
         basis.append("IDENTICAL=YES")
     if form.get("print_states"):
         basis.append("PRINT_STATES=YES")
+    # extra $BASIS lines forced by a workflow (e.g. SAVE_TRAJECT, AT_APPROX)
+    for extra in overrides.get("basis_extra", []):
+        basis.append(extra)
 
     lines.append("$BASIS")
     lines.append("  " + ",\n  ".join(basis))
@@ -502,12 +539,20 @@ def build_input(form):
             gv2 = num(form.get("grd_vib_b"), "1")
             pot.append(f"GRD_VIB={gv1},{gv2}")
 
-    if form.get("save_mtrx"):
-        pot.append("SAVE_MTRX=YES")
-    if form.get("read_mtrx"):
-        pot.append("READ_MTRX=YES")
-    if form.get("prog_run_no"):
-        pot.append("PROG_RUN=NO")
+    pot_force = overrides.get("pot_force")
+    if pot_force is not None:
+        # multi-run workflow: forced matrix-handling keywords
+        for kw in ("SAVE_MTRX", "READ_MTRX", "PROG_RUN", "UNFORMAT",
+                   "SAVE_TRAJECT", "AT_APPROX"):
+            if kw in pot_force:
+                pot.append(f"{kw}={pot_force[kw]}")
+    else:
+        if form.get("save_mtrx"):
+            pot.append("SAVE_MTRX=YES")
+        if form.get("read_mtrx"):
+            pot.append("READ_MTRX=YES")
+        if form.get("prog_run_no"):
+            pot.append("PROG_RUN=NO")
 
     lines.append("$POTENTIAL")
     lines.append("  " + ",\n  ".join(pot))
@@ -705,7 +750,31 @@ def index():
         "index.html",
         sys_types=SYS_TYPES,
         channel_labels=CHANNEL_LABELS,
+        presets=PRESETS,
     )
+
+
+# ---------------------------------------------------------------------------
+# Preset library: real working example inputs bundled in ./presets .
+# Each entry: filename -> human label. Grouped by SYS_TYPE for the menu.
+# ---------------------------------------------------------------------------
+PRESETS = [
+    ("t1_CO_He_dynamics.inp",   "1 -- CO + He, dynamics run"),
+    ("t1_N2_O_single_run.inp",  "1 -- N2 + O, single run"),
+    ("t2_CO_H_Morse.inp",       "2 -- CO + H, Morse vibration"),
+    ("t3_C6H6_He_exp_terms.inp","3 -- C6H6 + He, expansion terms"),
+    ("t4_H2O_He_CalcExp.inp",   "4 -- H2O + He, compute expansion"),
+    ("t4_MF_He_CS_MQCT.inp",    "4 -- methyl formate + He, CS-MQCT"),
+    ("t5_CO_CO_mtrx.inp",       "5 -- CO + CO, matrix via expansion"),
+    ("t6_CO_H2_parallelIO.inp", "6 -- CO + H2, parallel IO"),
+    ("t7_NH3_H2_dynamics.inp",  "7 -- ND3 + D2, dynamics run"),
+    ("t8_H2O_H2_dynamics.inp",  "8 -- H2O + H2, dynamics run"),
+    ("t9_H2O_NH3_mtrx.inp",     "9 -- H2O + NH3, matrix re-truncation"),
+    ("t0_H2O_H2O_identical.inp","0 -- H2O + H2O, identical partners"),
+]
+
+PRESET_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                          "presets")
 
 
 @app.route("/parse", methods=["POST"])
@@ -725,26 +794,182 @@ def parse():
     return jsonify(ok=True, fields=fields, notes=notes)
 
 
+@app.route("/preset/<name>")
+def preset(name):
+    """Load one bundled preset by filename and return parsed form fields."""
+    # guard against path traversal -- only allow known preset filenames
+    allowed = {fn for fn, _ in PRESETS}
+    if name not in allowed:
+        return jsonify(ok=False, error="Unknown preset."), 404
+    path = os.path.join(PRESET_DIR, name)
+    if not os.path.isfile(path):
+        return jsonify(ok=False, error="Preset file missing on disk."), 404
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
+        fields, notes = parse_inp(text)
+    except Exception as exc:                       # noqa: BLE001
+        return jsonify(ok=False, error=f"Could not load preset: {exc}"), 400
+    return jsonify(ok=True, fields=fields, notes=notes)
+
+
+def build_workflow(form):
+    """
+    Return a list of {name, label, text} files for the chosen run_mode.
+    single  -> one file
+    matrix  -> [matrix run, propagation run]
+    at      -> [AT-MQCT adiabatic run, AT-MQCT full run]
+    """
+    mode = form.get("run_mode", "single")
+    base = (num(form.get("label")) or "mqct")
+
+    if mode == "matrix":
+        run_a = build_input(form, overrides={
+            "pot_force": {"SAVE_MTRX": "YES", "READ_MTRX": "NO",
+                          "PROG_RUN": "NO"}})
+        run_b = build_input(form, overrides={
+            "pot_force": {"SAVE_MTRX": "NO", "READ_MTRX": "YES",
+                          "PROG_RUN": "YES"}})
+        return [
+            {"name": base + "_matrix.inp",
+             "label": "Run 1 -- matrix (SAVE_MTRX, PROG_RUN=NO)",
+             "text": run_a},
+            {"name": base + "_dynamics.inp",
+             "label": "Run 2 -- propagation (READ_MTRX, PROG_RUN=YES)",
+             "text": run_b},
+        ]
+
+    if mode == "at":
+        run_a = build_input(form, overrides={
+            "at_first_run": True,
+            "basis_extra": ["SAVE_TRAJECT=YES"]})
+        run_b = build_input(form, overrides={
+            "basis_extra": ["AT_APPROX=YES"]})
+        return [
+            {"name": base + "_AT_1st_run.inp",
+             "label": "Run 1 -- adiabatic (initial state only, SAVE_TRAJECT)",
+             "text": run_a},
+            {"name": base + "_AT_2nd_run.inp",
+             "label": "Run 2 -- full basis (AT_APPROX)",
+             "text": run_b},
+        ]
+
+    return [{"name": base + ".inp", "label": "Input file",
+             "text": build_input(form)}]
+
+
+# ---------------------------------------------------------------------------
+# Convergence-study helper (feature #7): generate one .inp per value of a
+# swept parameter, bundled as a zip.
+# ---------------------------------------------------------------------------
+# Each sweepable parameter maps to a form field name and an integer/real
+# flag (used only for the value-list validation message).
+SWEEP_PARAMS = {
+    "grd_r":     ("GRD_R",     "R-grid points",            "int"),
+    "jtotu":     ("JTOTU",     "max total J",              "int"),
+    "time_step": ("TIME_STEP", "propagation time step",    "real"),
+    "b_impct":   ("B_IMPCT",   "max impact parameter",     "real"),
+    "grd_ang2":  ("GRD_ANG2",  "beta angular grid points", "int"),
+    "emax":      ("EMAX",      "channel energy cutoff",    "real"),
+}
+
+
+def build_sweep(form):
+    """
+    Return (files, error). `files` is a list of {name, text}, one per
+    swept value. `error` is a string if the request is malformed.
+    Does not run validate() per file -- the base form is validated once
+    by the caller.
+    """
+    param = form.get("sweep_param", "")
+    if param not in SWEEP_PARAMS:
+        return [], "Unknown sweep parameter."
+    kw, _desc, _kind = SWEEP_PARAMS[param]
+
+    raw = num(form.get("sweep_values"), "")
+    values = [v for v in raw.replace(",", " ").split() if v]
+    if len(values) < 2:
+        return [], "Give at least two values to sweep, separated by spaces."
+    for v in values:
+        if not is_number(v):
+            return [], f"Sweep value '{v}' is not a number."
+
+    base = (num(form.get("label")) or "mqct")
+    files = []
+    for v in values:
+        # copy the form to a plain dict and override the swept field
+        single = {k: form.get(k) for k in form.keys()}
+        single[param] = v
+        # the swept value also belongs in the label so files are distinct
+        single["run_mode"] = "single"          # never nest workflows
+        text = build_input(single)
+        tag = v.replace(".", "p").replace("-", "m")
+        files.append({"name": f"{base}_{param}_{tag}.inp", "text": text})
+    return files, None
+
+
+@app.route("/sweep", methods=["POST"])
+def sweep():
+    """Generate a convergence sweep and return it as a zip download."""
+    # validate the base input once -- a broken base means every file is broken
+    errors, _warnings = validate(request.form)
+    if errors:
+        return jsonify(ok=False, errors=errors), 400
+    files, err = build_sweep(request.form)
+    if err:
+        return jsonify(ok=False, errors=[err]), 400
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for f in files:
+            zf.writestr(f["name"], f["text"])
+        # a small manifest so the sweep is self-documenting
+        param = request.form.get("sweep_param", "")
+        kw = SWEEP_PARAMS.get(param, (param,))[0]
+        vals = num(request.form.get("sweep_values"), "")
+        manifest = (f"MQCT convergence sweep\n"
+                    f"swept keyword : {kw}\n"
+                    f"values        : {vals}\n"
+                    f"files         : {len(files)}\n")
+        zf.writestr("README_sweep.txt", manifest)
+    buf.seek(0)
+    base = safe_filename(num(request.form.get("label")) or "mqct")
+    return Response(
+        buf.read(),
+        mimetype="application/zip",
+        headers={"Content-Disposition":
+                 f'attachment; filename="{base}_sweep.zip"'},
+    )
+
+
 @app.route("/generate", methods=["POST"])
 def generate():
-    text = build_input(request.form)
+    files = build_workflow(request.form)
     errors, warnings = validate(request.form)
 
-    # Download: still produce the file even with warnings, but block on errors.
+    # Download a single named file (used by both single and multi-run;
+    # the front end requests one file at a time by index).
     if request.form.get("download"):
         if errors:
             return jsonify(ok=False, errors=errors, warnings=warnings,
-                           text=text), 400
-        fname = (num(request.form.get("label")) or "mqct") + ".inp"
+                           files=files), 400
+        try:
+            idx = int(request.form.get("file_index", "0"))
+        except ValueError:
+            idx = 0
+        idx = max(0, min(idx, len(files) - 1))
+        f = files[idx]
+        fname = safe_filename(f["name"])
         return Response(
-            text,
+            f["text"],
             mimetype="text/plain",
-            headers={"Content-Disposition": f"attachment; filename={fname}"},
+            headers={"Content-Disposition":
+                     f'attachment; filename="{fname}"'},
         )
 
-    # Preview: return the text plus validation results as JSON.
+    # Preview: return all files plus validation results as JSON.
     return jsonify(ok=not errors, errors=errors,
-                   warnings=warnings, text=text)
+                   warnings=warnings, files=files)
 
 
 if __name__ == "__main__":
