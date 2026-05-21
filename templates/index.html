@@ -43,6 +43,14 @@
     background: transparent; cursor: pointer; letter-spacing: 0.5px;
   }
   .loadbtn:hover { background: var(--accent); color: #fff; }
+  .presetsel {
+    font-family: var(--mono); font-size: 12px;
+    padding: 7px 10px; border-radius: 4px;
+    border: 1px solid var(--line); background: var(--panel-2);
+    color: var(--ink); max-width: 320px;
+  }
+  .presetsel:focus { outline: none; border-color: var(--accent); }
+  .loaddiv { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); }
   .loadnote { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); }
   .loadnote.err { color: #8a2020; }
   .loadnote.ok  { color: #2f6b3a; }
@@ -118,6 +126,86 @@
   }
   .seg label.active { background: var(--accent); color: #ffffff; }
 
+  /* structured channel builder */
+  .chanbuilder { }
+  .chanrows { display: flex; flex-direction: column; gap: 6px; }
+  .chanrow { display: flex; align-items: flex-end; gap: 6px; }
+  .chanrow .chanidx {
+    font-family: var(--mono); font-size: 10px; color: var(--ink-dim);
+    width: 22px; text-align: right; padding-bottom: 8px;
+  }
+  .chancell { display: flex; flex-direction: column; gap: 2px; }
+  .chancell label {
+    font-family: var(--mono); font-size: 9px; color: var(--ink-dim);
+    margin: 0; letter-spacing: 0;
+  }
+  .chancell input {
+    width: 52px; padding: 5px 6px; text-align: center;
+    font-family: var(--mono); font-size: 12px;
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 3px; color: var(--ink);
+  }
+  .chancell input:focus { outline: none; border-color: var(--accent); }
+  .chancell input.bad { border-color: #8a2020; background: rgba(138,32,32,0.06); }
+  .chanrow .chandel {
+    border: 1px solid var(--line); background: transparent;
+    color: var(--ink-dim); font-family: var(--mono); font-size: 13px;
+    width: 26px; height: 30px; border-radius: 3px; cursor: pointer;
+    padding: 0; line-height: 1;
+  }
+  .chanrow .chandel:hover { border-color: #8a2020; color: #8a2020; }
+  .chaninit {
+    display: flex; align-items: center; gap: 5px;
+    font-family: var(--mono); font-size: 9px; color: var(--ink-dim);
+    padding-bottom: 8px;
+  }
+  .chaninit input { width: auto; }
+  .chanadd {
+    margin-top: 8px;
+    font-family: var(--mono); font-size: 11px;
+    padding: 6px 12px; border-radius: 4px;
+    border: 1px dashed var(--accent); color: var(--accent);
+    background: transparent; cursor: pointer;
+  }
+  .chanadd:hover { background: var(--accent); color: #fff; border-style: solid; }
+
+  /* reduced-mass calculator */
+  .minicalc {
+    font-family: var(--mono); font-size: 9px;
+    padding: 2px 7px; margin-left: 8px;
+    border: 1px solid var(--accent); color: var(--accent);
+    background: transparent; border-radius: 3px; cursor: pointer;
+    letter-spacing: 0; vertical-align: middle;
+  }
+  .minicalc:hover { background: var(--accent); color: #fff; }
+  .mucalc {
+    display: none; margin-top: 8px; padding: 10px;
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  .mucalc.show { display: block; }
+  .murow { display: flex; gap: 6px; margin-bottom: 6px; }
+  .musel, .muinp {
+    font-family: var(--mono); font-size: 12px;
+    padding: 6px 8px; border: 1px solid var(--line);
+    border-radius: 3px; background: var(--panel); color: var(--ink);
+  }
+  .musel { flex: 1; }
+  .muinp { width: 90px; }
+  .musel:focus, .muinp:focus { outline: none; border-color: var(--accent); }
+  .muout {
+    font-family: var(--mono); font-size: 12px; color: var(--ink);
+    display: flex; align-items: center; gap: 10px; margin-top: 4px;
+  }
+  .muout #mu-result { color: var(--accent); font-weight: 600; }
+  .muapply {
+    font-family: var(--mono); font-size: 10px;
+    padding: 4px 10px; margin-left: auto;
+    border: 1px solid var(--accent); background: var(--accent);
+    color: #fff; border-radius: 3px; cursor: pointer;
+  }
+  .muapply:disabled { opacity: 0.4; cursor: default; }
+
   .out-panel { position: sticky; top: 24px; }
   .out-panel pre {
     background: var(--panel-2);
@@ -149,6 +237,98 @@
     border: 1px solid #8a2020;
   }
   .out-panel .actions { display: flex; gap: 10px; margin-top: 14px; }
+
+  /* per-file output blocks (workflow may produce two) */
+  .filecard { margin-top: 14px; }
+  .filecard .filehead {
+    font-family: var(--mono); font-size: 11px; color: var(--accent);
+    margin-bottom: 5px; display: flex; align-items: center; gap: 8px;
+  }
+  .filecard .filename {
+    color: var(--ink-dim); font-size: 10px;
+  }
+  .filecard pre {
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 4px; padding: 14px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink);
+    white-space: pre; overflow-x: auto; min-height: 120px;
+  }
+  .filecard pre.incomplete {
+    opacity: 0.55; border-style: dashed; border-color: #8a2020;
+  }
+  .filecard .fileacts { display: flex; gap: 8px; margin-top: 8px; }
+  .filecard .fileacts button {
+    font-family: var(--mono); font-size: 11px;
+    padding: 6px 12px; border-radius: 4px;
+    border: 1px solid var(--accent); background: transparent;
+    color: var(--accent); cursor: pointer;
+  }
+  .filecard .fileacts button:hover { background: var(--accent); color: #fff; }
+
+  /* convergence-sweep panel */
+  .sweepbox {
+    margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px;
+  }
+  .sweepbox summary {
+    font-family: var(--mono); font-size: 12px; color: var(--accent);
+    cursor: pointer; letter-spacing: 0.3px;
+  }
+  .sweepbody { margin-top: 12px; }
+  .sweepintro {
+    font-size: 11px; color: var(--ink-dim); margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .sweephint {
+    font-family: var(--mono); font-size: 10px; color: var(--ink-dim);
+  }
+  #sweep-param, #sweep-values {
+    width: 100%; font-family: var(--mono); font-size: 12px;
+    padding: 8px 10px; border: 1px solid var(--line);
+    border-radius: 4px; background: var(--panel-2); color: var(--ink);
+  }
+  #sweep-param:focus, #sweep-values:focus {
+    outline: none; border-color: var(--accent);
+  }
+  .sweepnote {
+    font-family: var(--mono); font-size: 11px; margin-top: 10px;
+  }
+  .sweepnote.err { color: #8a2020; }
+  .sweepnote.ok  { color: #2f6b3a; }
+
+  /* SLURM panel */
+  .slgrid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .slpreview {
+    margin-top: 10px;
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 4px; padding: 12px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink);
+    white-space: pre; overflow-x: auto;
+  }
+
+  /* keyword tooltip (JS-positioned) */
+  .kw[data-tip] {
+    border-bottom: 1px dotted var(--ink-dim);
+    cursor: help;
+  }
+  #kw-tip {
+    position: fixed; z-index: 1000;
+    max-width: 280px;
+    background: #23262b; color: #e8e6e0;
+    border: 1px solid #3a3f47; border-radius: 5px;
+    padding: 8px 10px;
+    font-family: var(--mono); font-size: 11px; line-height: 1.5;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    pointer-events: none; opacity: 0;
+    transition: opacity 0.08s ease;
+  }
+  #kw-tip.show { opacity: 1; }
+  #kw-tip .kw-name {
+    color: #6cc4b4; font-weight: 600; display: block; margin-bottom: 3px;
+  }
+  #kw-tip .kw-gotcha { color: #e3a857; display: block; margin-top: 4px; }
   button {
     font-family: var(--mono); font-size: 12px;
     padding: 10px 16px; border-radius: 4px;
@@ -205,8 +385,19 @@
     <h1>MQCT Input Generator <span class="tag">ALL SYS_TYPES</span></h1>
     <p>Molecule + atom and molecule + molecule systems. Only keywords relevant to the chosen system type are shown.</p>
     <div class="loadbar">
-      <label for="inp-file" class="loadbtn">Load existing .inp file</label>
+      <select id="preset-select" class="presetsel">
+        <option value="">Start from a preset example...</option>
+        {% for fn, label in presets %}
+        <option value="{{ fn }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <span class="loaddiv">or</span>
+      <label for="inp-file" class="loadbtn">Load your own .inp file</label>
       <input type="file" id="inp-file" accept=".inp,.txt,text/plain" hidden>
+      <span class="loaddiv">|</span>
+      <button type="button" class="loadbtn" id="save-json">Save setup (.json)</button>
+      <label for="json-file" class="loadbtn">Load setup (.json)</label>
+      <input type="file" id="json-file" accept=".json,application/json" hidden>
       <span class="loadnote" id="load-note"></span>
     </div>
   </header>
@@ -413,8 +604,13 @@
           <div class="field chan-list">
             <label>Channels <span class="kw">CHNLS_LIST</span>
               &mdash; <span id="chan-fmt">one j per line</span></label>
-            <textarea name="chnls_list" id="chnls_list" placeholder="0&#10;1&#10;2"></textarea>
-            <div class="hint">One channel per line. NMB_CHNLS is counted automatically.</div>
+            <div class="chanbuilder" id="chan-builder">
+              <div class="chanrows" id="chan-rows"></div>
+              <button type="button" class="chanadd" id="chan-add">+ Add channel</button>
+            </div>
+            <textarea name="chnls_list" id="chnls_list" hidden></textarea>
+            <div class="hint">Each row is one channel. NMB_CHNLS is counted
+              automatically; the field count matches the system type.</div>
           </div>
 
           <!-- emax: molecule + atom -->
@@ -527,8 +723,24 @@
           </div>
           <div class="row">
             <div class="field">
-              <label>Reduced mass <span class="kw">MASS_RED</span> (amu)</label>
+              <label>Reduced mass <span class="kw">MASS_RED</span> (amu)
+                <button type="button" class="minicalc" id="mu-toggle">calc &mu;</button>
+              </label>
               <input type="text" name="mass_red" placeholder="e.g. 3.2748">
+              <div class="mucalc" id="mu-panel">
+                <div class="murow">
+                  <select id="mu-sp1" class="musel"></select>
+                  <input type="text" id="mu-m1" class="muinp" placeholder="mass 1">
+                </div>
+                <div class="murow">
+                  <select id="mu-sp2" class="musel"></select>
+                  <input type="text" id="mu-m2" class="muinp" placeholder="mass 2">
+                </div>
+                <div class="muout">
+                  &mu; = <span id="mu-result">--</span> amu
+                  <button type="button" class="muapply" id="mu-apply">Use this</button>
+                </div>
+              </div>
             </div>
             <div class="field">
               <label>Collision energies <span class="kw">U_ENERGY</span> (cm&#8315;&#185;)</label>
@@ -712,14 +924,110 @@
       <div class="block out-panel">
         <h2>Generated .inp</h2>
         <div class="body">
+          <div class="field">
+            <label>Workflow <span class="kw">run_mode</span></label>
+            <select name="run_mode" id="run-mode">
+              <option value="single">Single run -- one input file</option>
+              <option value="matrix">Matrix + propagation -- two paired files</option>
+              <option value="at">AT-MQCT -- two paired files (adiabatic + full)</option>
+            </select>
+            <div class="hint" id="run-mode-hint">One input file for a
+              standard calculation.</div>
+          </div>
           <div class="out-banner incomplete" id="out-banner"></div>
-          <pre id="output">Fill the form, then press Generate.</pre>
           <div class="actions">
             <button type="button" class="primary" id="gen-btn">Generate</button>
-            <button type="button" class="ghost" id="copy-btn">Copy</button>
-            <button type="button" class="ghost" id="dl-btn">Download</button>
           </div>
+          <div id="files-area"></div>
           <div class="vbox" id="vbox"></div>
+
+          <details class="sweepbox">
+            <summary>Convergence sweep &mdash; generate a set of files</summary>
+            <div class="sweepbody">
+              <p class="sweepintro">Vary one parameter across several
+                values; download all the resulting input files as a zip.
+                The current form is the baseline.</p>
+              <div class="field">
+                <label>Parameter to sweep</label>
+                <select id="sweep-param">
+                  <option value="grd_r">GRD_R &mdash; R-grid points</option>
+                  <option value="jtotu">JTOTU &mdash; max total J</option>
+                  <option value="time_step">TIME_STEP &mdash; time step</option>
+                  <option value="b_impct">B_IMPCT &mdash; max impact parameter</option>
+                  <option value="grd_ang2">GRD_ANG2 &mdash; beta grid</option>
+                  <option value="emax">EMAX &mdash; channel energy cutoff</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Values <span class="sweephint">space-separated</span></label>
+                <input type="text" id="sweep-values" placeholder="40 60 80 100">
+              </div>
+              <button type="button" class="primary" id="sweep-btn">Download sweep zip</button>
+              <div class="sweepnote" id="sweep-note"></div>
+            </div>
+          </details>
+
+          <details class="sweepbox">
+            <summary>SLURM batch script &mdash; generate a .sl file</summary>
+            <div class="sweepbody">
+              <p class="sweepintro">Build a SLURM submission script to run
+                this calculation on a cluster. Fill in your cluster's
+                settings; the script is generated below.</p>
+              <div class="slgrid">
+                <div class="field">
+                  <label>Job name</label>
+                  <input type="text" id="sl-job" placeholder="MQCT">
+                </div>
+                <div class="field">
+                  <label>Partition / queue</label>
+                  <input type="text" id="sl-part" placeholder="batch">
+                </div>
+                <div class="field">
+                  <label>Nodes</label>
+                  <input type="text" id="sl-nodes" placeholder="1">
+                </div>
+                <div class="field">
+                  <label>Tasks (MPI ranks)</label>
+                  <input type="text" id="sl-ntasks" placeholder="32">
+                </div>
+                <div class="field">
+                  <label>Wall time</label>
+                  <input type="text" id="sl-time" placeholder="12:00:00">
+                </div>
+                <div class="field">
+                  <label>Launcher</label>
+                  <select id="sl-launch">
+                    <option value="mpirun">mpirun</option>
+                    <option value="srun">srun -n &lt;tasks&gt;</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field">
+                <label>Module load line(s)
+                  <span class="sweephint">as your cluster needs</span></label>
+                <input type="text" id="sl-module"
+                  placeholder="openmpi-intel/4.0.5">
+              </div>
+              <div class="field">
+                <label>Path to the MQCT executable</label>
+                <input type="text" id="sl-exe"
+                  placeholder="../bin/mqct_H2OHe.exe">
+              </div>
+              <div class="field">
+                <label>Extra #SBATCH lines
+                  <span class="sweephint">optional, one per line</span></label>
+                <input type="text" id="sl-extra"
+                  placeholder="-C cpu">
+              </div>
+              <button type="button" class="primary" id="sl-btn">Build script</button>
+              <div class="sweepnote" id="sl-note"></div>
+              <pre class="slpreview" id="sl-preview" hidden></pre>
+              <div class="fileacts" id="sl-acts" hidden>
+                <button type="button" id="sl-copy">Copy</button>
+                <button type="button" id="sl-dl">Download .sl</button>
+              </div>
+            </div>
+          </details>
         </div>
       </div>
     </div>
@@ -727,9 +1035,126 @@
   </div>
   </form>
 </div>
+<div id="kw-tip"></div>
 
 <script>
 const form = document.getElementById('mqct-form');
+
+// Trigger a browser download of a Blob. The anchor MUST be in the DOM
+// before .click() -- Firefox and Safari ignore clicks on detached
+// anchors, which silently breaks downloads.
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ---- keyword reference tooltips ---------------------------------------
+// Short descriptions paraphrased from the MQCT User Manual (Tables 3-5).
+// `g` is an optional gotcha line. Numbered variants (BE1/BE2 ...) share
+// the base entry; the lookup strips a trailing digit.
+const KW_DOCS = {
+  SYS_TYPE: {d: "Selects the collision system: molecule + atom (1-4) or molecule + molecule (5-9, 0). Determines which other keywords apply."},
+  BE: {d: "Rotational constant of the diatomic molecule, in cm-1."},
+  DE: {d: "Centrifugal distortion constant of the diatom, in cm-1.",
+       g: "For SYS_TYPE 1/2/7/8 this must be in strict X.XE+Y form (dot, E, explicit sign)."},
+  WE: {d: "Harmonic vibrational frequency of the diatom, in cm-1 (vibrating-diatom types)."},
+  XE: {d: "Anharmonicity constant of the diatom, in cm-1."},
+  A: {d: "Rotational constant A of the top molecule, in cm-1.",
+      g: "Symmetric top: oblate needs A > C, prolate needs A < C (opposite the usual convention)."},
+  B: {d: "Rotational constant B of an asymmetric top, in cm-1. Not entered for a symmetric top (B = A is implied)."},
+  C: {d: "Rotational constant C of the top molecule, in cm-1.",
+      g: "Must match the PES reference-orientation axis, not magnitude order."},
+  EMAX: {d: "Energy cutoff in cm-1: all rotational states below this energy are included in the basis."},
+  CHNLS_LIST: {d: "Explicit list of channels (rotational states) in the basis set. Each channel's quantum numbers depend on SYS_TYPE."},
+  INIT_CHNL: {d: "The initial rotational state of the calculation.",
+              g: "Must exactly match one entry in CHNLS_LIST. An excited initial state means a quenching calculation."},
+  JMIN: {d: "Lowest rotational quantum number j included when channels are given as a j-range."},
+  JMAX: {d: "Highest rotational quantum number j included in the j-range."},
+  VMIN: {d: "Lowest vibrational quantum number v included (vibrating-diatom types)."},
+  VMAX: {d: "Highest vibrational quantum number v included."},
+  LABEL: {d: "A free-text job label. Also used as the default output filename."},
+  MASS_RED: {d: "Reduced mass of the two collision partners, in amu: mu = m1 m2 / (m1 + m2).",
+             g: "Use the 'calc mu' button to compute this from the partner masses."},
+  U_ENERGY: {d: "Collision energy or energies, in cm-1. Space- or comma-separated for several.",
+             g: "This is the effective (Billing) energy, not the raw kinetic energy."},
+  RMIN: {d: "Smallest molecule-molecule separation on the propagation grid, in Bohr."},
+  RMAX: {d: "Largest separation, in Bohr; the trajectory starts and ends here (typically ~20 Bohr)."},
+  B_IMPCT: {d: "Maximum impact parameter, in Bohr.",
+            g: "If set, it overrides JTOTL / JTOTU for the partial-wave sampling."},
+  JTOTL: {d: "Lowest total angular momentum J in the partial-wave sum."},
+  JTOTU: {d: "Highest total angular momentum J. A convergence parameter -- raise it until cross sections stop changing."},
+  TIME_STEP: {d: "Propagation time step, in atomic units. A convergence parameter."},
+  TIME_LIM: {d: "Maximum propagation time, in atomic units.",
+             g: "Must be in strict X.XE+Y form -- a plain integer like 3500000 will crash MQCT."},
+  NMB_TRAJ: {d: "Number of Monte-Carlo trajectories per initial state (used when MONTE_CARLO is on)."},
+  WGHT_POSPAR: {d: "Nuclear-spin statistical weight of the positive exchange parity, for identical partners."},
+  E_UNITS: {d: "Units in which the PES returns energy (A.U., CM-1, KLVN, KCAL)."},
+  R_UNITS: {d: "Units of the distance coordinate passed to the PES (A.U. or ANGS)."},
+  GRD_R: {d: "Number of points on the radial (R) quadrature grid. A convergence parameter."},
+  GRD_ANG2: {d: "Number of points on the beta (polar-angle) quadrature grid.",
+             g: "For molecule + molecule this keyword takes two values, one per molecule."},
+  GRD_ANG3: {d: "Number of points on the gamma (azimuthal) quadrature grid (top molecules)."},
+  GRD_VIB: {d: "Number of points on the vibrational quadrature grid (vibrating-diatom types)."},
+  run_mode: {d: "Single run, or a paired multi-run workflow (matrix + propagation, or AT-MQCT)."},
+};
+
+function kwDoc(name) {
+  if (KW_DOCS[name]) return KW_DOCS[name];
+  // strip a trailing 1/2 for numbered variants: BE1 -> BE, A2 -> A
+  const base = name.replace(/[12]$/, '');
+  return KW_DOCS[base] || null;
+}
+
+const kwTip = document.getElementById('kw-tip');
+
+function showKwTip(span) {
+  const name = span.textContent.trim();
+  const doc = kwDoc(name);
+  if (!doc) return;
+  let html = '<span class="kw-name">' + name + '</span>' + doc.d;
+  if (doc.g) html += '<span class="kw-gotcha">Note: ' + doc.g + '</span>';
+  kwTip.innerHTML = html;
+  kwTip.classList.add('show');
+  positionKwTip(span);
+}
+
+function positionKwTip(span) {
+  const r = span.getBoundingClientRect();
+  const tw = kwTip.offsetWidth, th = kwTip.offsetHeight;
+  const margin = 8;
+  // default: above the keyword, left-aligned to it
+  let top = r.top - th - 6;
+  let left = r.left;
+  // flip below if it would clip the top of the viewport
+  if (top < margin) top = r.bottom + 6;
+  // nudge horizontally so it never runs off-screen
+  if (left + tw > window.innerWidth - margin) {
+    left = window.innerWidth - margin - tw;
+  }
+  if (left < margin) left = margin;
+  kwTip.style.top = top + 'px';
+  kwTip.style.left = left + 'px';
+}
+
+function hideKwTip() {
+  kwTip.classList.remove('show');
+}
+
+// attach to every keyword span that has a known description
+document.querySelectorAll('span.kw').forEach(span => {
+  const name = span.textContent.trim();
+  if (!kwDoc(name)) return;
+  span.setAttribute('data-tip', '1');     // drives the dotted underline
+  span.addEventListener('mouseenter', () => showKwTip(span));
+  span.addEventListener('mouseleave', hideKwTip);
+});
 const sysSelect = document.getElementById('sys_type');
 
 // Show or hide a region AND disable/enable the form controls inside it.
@@ -799,16 +1224,226 @@ function applyChanMode() {
 }
 
 const CHAN_LABELS = {{ channel_labels | tojson }};
-function updateChannelFormat() {
-  const labels = CHAN_LABELS[sysSelect.value] || ['j'];
-  document.getElementById('chan-fmt').textContent =
-    'one (' + labels.join(', ') + ') tuple per line';
-  const ta = document.getElementById('chnls_list');
-  ta.placeholder = labels.length === 1
-    ? '0\n1\n2'
-    : labels.map(()=>'0').join(',') + '\n' +
-      labels.map((_,i)=> i===0?'1':'0').join(',');
+
+// ---- structured channel builder ---------------------------------------
+// Each channel is a row of integer inputs, one per quantum number for the
+// current SYS_TYPE. A hidden textarea (#chnls_list) is kept in sync so the
+// backend and validation are unchanged. Wrong-width channels are
+// impossible because the row always has exactly the right field count.
+
+function chanLabels() {
+  return CHAN_LABELS[sysSelect.value] || ['j'];
 }
+
+// Read the builder rows into an array of arrays of strings.
+function readChanRows() {
+  const rows = [];
+  document.querySelectorAll('#chan-rows .chanrow').forEach(r => {
+    const vals = [...r.querySelectorAll('.chancell input')].map(i => i.value.trim());
+    rows.push(vals);
+  });
+  return rows;
+}
+
+// Write the hidden textarea + INIT_CHNL from the current rows.
+function syncChannels() {
+  const rows = readChanRows();
+  const lines = rows
+    .filter(v => v.some(x => x !== ''))           // skip wholly blank rows
+    .map(v => v.join(','));
+  document.getElementById('chnls_list').value = lines.join('\n');
+  // mark any non-integer cell
+  document.querySelectorAll('#chan-rows .chancell input').forEach(i => {
+    const v = i.value.trim();
+    i.classList.toggle('bad', v !== '' && !/^-?\d+$/.test(v));
+  });
+  // INIT_CHNL: whichever row's radio is checked
+  const sel = document.querySelector('#chan-rows input.chaninit-radio:checked');
+  if (sel) {
+    const row = sel.closest('.chanrow');
+    const vals = [...row.querySelectorAll('.chancell input')].map(i => i.value.trim());
+    if (vals.every(x => x !== '')) {
+      document.getElementById('init_chnl').value = vals.join(',');
+    }
+  }
+}
+
+// Build one channel row. `values` is an optional array to prefill.
+function makeChanRow(values) {
+  const labels = chanLabels();
+  const row = document.createElement('div');
+  row.className = 'chanrow';
+
+  const idx = document.createElement('span');
+  idx.className = 'chanidx';
+  row.appendChild(idx);
+
+  labels.forEach((lab, k) => {
+    const cell = document.createElement('div');
+    cell.className = 'chancell';
+    const l = document.createElement('label');
+    l.textContent = lab;
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.inputMode = 'numeric';
+    if (values && values[k] !== undefined) inp.value = values[k];
+    inp.addEventListener('input', syncChannels);
+    cell.appendChild(l);
+    cell.appendChild(inp);
+    row.appendChild(cell);
+  });
+
+  // "initial" radio -- picks this channel as INIT_CHNL
+  const initWrap = document.createElement('label');
+  initWrap.className = 'chaninit';
+  const radio = document.createElement('input');
+  radio.type = 'radio';
+  radio.name = 'chaninit-radio';
+  radio.className = 'chaninit-radio';
+  radio.addEventListener('change', syncChannels);
+  initWrap.appendChild(radio);
+  initWrap.appendChild(document.createTextNode('initial'));
+  row.appendChild(initWrap);
+
+  // delete button
+  const del = document.createElement('button');
+  del.type = 'button';
+  del.className = 'chandel';
+  del.textContent = '\u00d7';
+  del.title = 'Remove this channel';
+  del.addEventListener('click', () => {
+    row.remove();
+    renumberChanRows();
+    syncChannels();
+  });
+  row.appendChild(del);
+
+  return row;
+}
+
+function renumberChanRows() {
+  document.querySelectorAll('#chan-rows .chanrow').forEach((r, i) => {
+    r.querySelector('.chanidx').textContent = '#' + (i + 1);
+  });
+}
+
+// Rebuild the whole builder for the current SYS_TYPE, preserving values.
+function rebuildChannelBuilder(preserve) {
+  const labels = chanLabels();
+  document.getElementById('chan-fmt').textContent =
+    '(' + labels.join(', ') + ') per channel';
+  const wrap = document.getElementById('chan-rows');
+  // capture existing values unless caller passed an explicit set
+  let rows = preserve;
+  if (rows === undefined) {
+    rows = readChanRows();
+  }
+  wrap.innerHTML = '';
+  if (!rows || rows.length === 0) rows = [labels.map(() => '')];
+  rows.forEach(vals => {
+    // pad/trim each row to the current width
+    const fitted = labels.map((_, k) => (vals && vals[k] !== undefined) ? vals[k] : '');
+    wrap.appendChild(makeChanRow(fitted));
+  });
+  renumberChanRows();
+  syncChannels();
+}
+
+// kept for callers elsewhere; now just rebuilds the builder
+function updateChannelFormat() {
+  rebuildChannelBuilder();
+}
+
+document.getElementById('chan-add').addEventListener('click', () => {
+  const labels = chanLabels();
+  document.getElementById('chan-rows')
+    .appendChild(makeChanRow(labels.map(() => '')));
+  renumberChanRows();
+  syncChannels();
+});
+
+// ---- reduced-mass calculator ------------------------------------------
+// Masses in unified atomic mass units (u). Common scattering partners.
+const SPECIES = [
+  ['He',  4.002602],
+  ['H',   1.007825],
+  ['H2',  2.015650],
+  ['D2',  4.028204],
+  ['HD',  3.021975],
+  ['Li',  7.016004],
+  ['C',  12.000000],
+  ['N',  14.003074],
+  ['O',  15.994915],
+  ['Ne', 19.992440],
+  ['Ar', 39.962383],
+  ['Na', 22.989770],
+  ['N2', 28.006148],
+  ['O2', 31.989830],
+  ['CO', 27.994915],
+  ['NO', 29.997989],
+  ['HF', 20.006228],
+  ['HCl',35.976678],
+  ['H2O',18.010565],
+  ['D2O',20.023118],
+  ['NH3',17.026549],
+  ['ND3',20.045384],
+  ['CH3',15.023475],
+  ['CO2',43.989830],
+  ['HCOOCH3', 60.021129],
+];
+
+function fillSpeciesSelect(sel) {
+  sel.innerHTML = '<option value="">-- pick species --</option>'
+    + SPECIES.map(([n,m]) => `<option value="${m}">${n}</option>`).join('')
+    + '<option value="custom">custom mass...</option>';
+}
+fillSpeciesSelect(document.getElementById('mu-sp1'));
+fillSpeciesSelect(document.getElementById('mu-sp2'));
+
+function muMass(selId, inpId) {
+  const sel = document.getElementById(selId);
+  const inp = document.getElementById(inpId);
+  if (sel.value === 'custom') {
+    inp.style.display = '';
+    const v = parseFloat(inp.value);
+    return isNaN(v) ? null : v;
+  }
+  inp.style.display = 'none';
+  const v = parseFloat(sel.value);
+  return isNaN(v) ? null : v;
+}
+
+function recomputeMu() {
+  const m1 = muMass('mu-sp1', 'mu-m1');
+  const m2 = muMass('mu-sp2', 'mu-m2');
+  const out = document.getElementById('mu-result');
+  const apply = document.getElementById('mu-apply');
+  if (m1 && m2 && (m1 + m2) > 0) {
+    const mu = (m1 * m2) / (m1 + m2);
+    out.textContent = mu.toFixed(6);
+    apply.disabled = false;
+    apply.dataset.mu = mu.toFixed(6);
+  } else {
+    out.textContent = '--';
+    apply.disabled = true;
+  }
+}
+
+document.getElementById('mu-toggle').addEventListener('click', () => {
+  document.getElementById('mu-panel').classList.toggle('show');
+});
+['mu-sp1','mu-sp2'].forEach(id =>
+  document.getElementById(id).addEventListener('change', recomputeMu));
+['mu-m1','mu-m2'].forEach(id =>
+  document.getElementById(id).addEventListener('input', recomputeMu));
+document.getElementById('mu-apply').addEventListener('click', () => {
+  const mu = document.getElementById('mu-apply').dataset.mu;
+  if (mu) {
+    form.querySelector('[name="mass_red"]').value = mu;
+    document.getElementById('mu-panel').classList.remove('show');
+  }
+});
+recomputeMu();
 
 const monteBox = document.getElementById('monte_carlo');
 function toggleNtraj() {
@@ -831,21 +1466,16 @@ function toggleWght() {
 }
 identicalBox.addEventListener('change', () => { toggleIdenticalNote(); toggleWght(); });
 
-function renderValidation(errors, warnings) {
+function renderValidation(errors, warnings, hasErr) {
   const vbox = document.getElementById('vbox');
-  const pre = document.getElementById('output');
   const banner = document.getElementById('out-banner');
   vbox.innerHTML = '';
 
-  // Problem 5: make an incomplete file visually obvious -- dim the
-  // preview and show a banner so a skeleton is never read as final.
-  if (errors.length) {
-    pre.classList.add('incomplete');
+  if (hasErr) {
     banner.classList.add('show');
     banner.textContent = 'Incomplete -- ' + errors.length +
-      ' error(s) below. This file is NOT ready to run.';
+      ' error(s) below. Not ready to run.';
   } else {
-    pre.classList.remove('incomplete');
     banner.classList.remove('show');
     banner.textContent = '';
   }
@@ -862,8 +1492,7 @@ function renderValidation(errors, warnings) {
     vbox.appendChild(h);
     errors.forEach(e => {
       const d = document.createElement('div');
-      d.className = 'vmsg err';
-      d.textContent = e;
+      d.className = 'vmsg err'; d.textContent = e;
       vbox.appendChild(d);
     });
   }
@@ -874,43 +1503,196 @@ function renderValidation(errors, warnings) {
     vbox.appendChild(h);
     warnings.forEach(w => {
       const d = document.createElement('div');
-      d.className = 'vmsg warn';
-      d.textContent = w;
+      d.className = 'vmsg warn'; d.textContent = w;
       vbox.appendChild(d);
     });
   }
 }
 
-async function generate(download) {
+// Render one or more generated files as cards with copy/download buttons.
+function renderFiles(files, hasErr) {
+  const area = document.getElementById('files-area');
+  area.innerHTML = '';
+  files.forEach((f, i) => {
+    const card = document.createElement('div');
+    card.className = 'filecard';
+
+    const head = document.createElement('div');
+    head.className = 'filehead';
+    head.appendChild(document.createTextNode(f.label));
+    const fn = document.createElement('span');
+    fn.className = 'filename';
+    fn.textContent = f.name;
+    head.appendChild(fn);
+    card.appendChild(head);
+
+    const pre = document.createElement('pre');
+    pre.textContent = f.text;
+    if (hasErr) pre.classList.add('incomplete');
+    card.appendChild(pre);
+
+    const acts = document.createElement('div');
+    acts.className = 'fileacts';
+    const copy = document.createElement('button');
+    copy.textContent = 'Copy';
+    copy.addEventListener('click', () =>
+      navigator.clipboard.writeText(f.text));
+    const dl = document.createElement('button');
+    dl.textContent = 'Download';
+    dl.addEventListener('click', () => downloadFile(i));
+    acts.appendChild(copy);
+    acts.appendChild(dl);
+    card.appendChild(acts);
+
+    area.appendChild(card);
+  });
+}
+
+let lastFiles = [];
+
+async function generate() {
   const data = new FormData(form);
-  if (download) data.append('download', '1');
   const resp = await fetch('/generate', { method: 'POST', body: data });
-
-  // A successful download returns the raw .inp file (not JSON).
-  const ctype = resp.headers.get('Content-Type') || '';
-  if (download && resp.ok && ctype.indexOf('text/plain') !== -1) {
-    const blob = await resp.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = (data.get('label') || 'mqct') + '.inp';
-    a.click();
-    URL.revokeObjectURL(url);
-    return;
-  }
-
-  // Otherwise the server returned JSON: preview, or a blocked download.
   const res = await resp.json();
-  document.getElementById('output').textContent = res.text || '';
-  renderValidation(res.errors || [], res.warnings || []);
-  if (download && !res.ok) {
+  lastFiles = res.files || [];
+  const hasErr = !res.ok;
+  renderFiles(lastFiles, hasErr);
+  renderValidation(res.errors || [], res.warnings || [], hasErr);
+}
+
+// Download one file by index (re-posts so the server streams it).
+async function downloadFile(idx) {
+  const data = new FormData(form);
+  data.append('download', '1');
+  data.append('file_index', String(idx));
+  const resp = await fetch('/generate', { method: 'POST', body: data });
+  const ctype = resp.headers.get('Content-Type') || '';
+  if (resp.ok && ctype.indexOf('text/plain') !== -1) {
+    const blob = await resp.blob();
+    const cd = resp.headers.get('Content-Disposition') || '';
+    const m = cd.match(/filename="?([^";]+)"?/);
+    const name = m ? m[1].trim()
+                   : ((lastFiles[idx] && lastFiles[idx].name) || 'mqct.inp');
+    triggerDownload(blob, name);
+  } else {
+    // blocked by validation errors
+    const res = await resp.json();
+    renderValidation(res.errors || [], res.warnings || [], true);
     document.getElementById('vbox').scrollIntoView({ behavior: 'smooth' });
   }
 }
-document.getElementById('gen-btn').addEventListener('click', () => generate(false));
-document.getElementById('dl-btn').addEventListener('click', () => generate(true));
-document.getElementById('copy-btn').addEventListener('click', () => {
-  navigator.clipboard.writeText(document.getElementById('output').textContent);
+
+document.getElementById('gen-btn').addEventListener('click', generate);
+
+// workflow selector hint
+const runModeHints = {
+  single: 'One input file for a standard calculation.',
+  matrix: 'Two files: compute and save the matrix first '
+        + '(PROG_RUN=NO), then propagate trajectories reading it back.',
+  at:     'Two files: an adiabatic run with only the initial state '
+        + '(SAVE_TRAJECT), then the full-basis run (AT_APPROX).',
+};
+document.getElementById('run-mode').addEventListener('change', (e) => {
+  document.getElementById('run-mode-hint').textContent =
+    runModeHints[e.target.value] || '';
+});
+
+// ---- convergence sweep -------------------------------------------------
+document.getElementById('sweep-btn').addEventListener('click', async () => {
+  const note = document.getElementById('sweep-note');
+  const data = new FormData(form);
+  data.append('sweep_param', document.getElementById('sweep-param').value);
+  data.append('sweep_values', document.getElementById('sweep-values').value);
+  note.className = 'sweepnote';
+  note.textContent = 'Building sweep ...';
+  try {
+    const resp = await fetch('/sweep', { method: 'POST', body: data });
+    const ctype = resp.headers.get('Content-Type') || '';
+    if (resp.ok && ctype.indexOf('zip') !== -1) {
+      const blob = await resp.blob();
+      const cd = resp.headers.get('Content-Disposition') || '';
+      const m = cd.match(/filename="?([^";]+)"?/);
+      const name = m ? m[1].trim() : 'mqct_sweep.zip';
+      triggerDownload(blob, name);
+      note.className = 'sweepnote ok';
+      note.textContent = 'Downloaded ' + name + '.';
+    } else {
+      const res = await resp.json();
+      note.className = 'sweepnote err';
+      note.textContent = (res.errors || ['Sweep failed.']).join(' ');
+    }
+  } catch (e) {
+    note.className = 'sweepnote err';
+    note.textContent = 'Sweep failed: ' + e;
+  }
+});
+
+// ---- SLURM batch-script generator -------------------------------------
+let slLastScript = '';
+
+function buildSlurmScript() {
+  const v = id => document.getElementById(id).value.trim();
+  const job    = v('sl-job')    || (form.querySelector('[name=label]').value
+                                    || 'MQCT');
+  const part   = v('sl-part');
+  const nodes  = v('sl-nodes')  || '1';
+  const ntasks = v('sl-ntasks') || '32';
+  const wall   = v('sl-time')   || '12:00:00';
+  const launch = v('sl-launch');
+  const mod    = v('sl-module');
+  const exe    = v('sl-exe')    || '../bin/mqct.exe';
+  const extra  = v('sl-extra');
+
+  const L = ['#!/bin/bash'];
+  L.push('#SBATCH --job-name=' + job);
+  if (part)  L.push('#SBATCH --partition=' + part);
+  L.push('#SBATCH --nodes=' + nodes);
+  L.push('#SBATCH --ntasks=' + ntasks);
+  L.push('#SBATCH --time=' + wall);
+  L.push('#SBATCH --output=%x-%j.log');
+  if (extra) {
+    // allow several extra directives separated by ';' or newlines
+    extra.split(/[;\n]/).map(s => s.trim()).filter(Boolean).forEach(e => {
+      L.push('#SBATCH ' + e);
+    });
+  }
+  L.push('');
+  if (mod) {
+    mod.split(/[;\n]/).map(s => s.trim()).filter(Boolean).forEach(m => {
+      L.push('module load ' + m);
+    });
+    L.push('');
+  }
+  if (launch === 'srun') {
+    L.push('time srun -n ' + ntasks + ' ' + exe);
+  } else {
+    L.push('time mpirun -np ' + ntasks + ' ' + exe);
+  }
+  L.push('');
+  return L.join('\n');
+}
+
+document.getElementById('sl-btn').addEventListener('click', () => {
+  const note = document.getElementById('sl-note');
+  const pre  = document.getElementById('sl-preview');
+  const acts = document.getElementById('sl-acts');
+  slLastScript = buildSlurmScript();
+  pre.textContent = slLastScript;
+  pre.hidden = false;
+  acts.hidden = false;
+  note.className = 'sweepnote ok';
+  note.textContent = 'Script built. Review it, then copy or download.';
+});
+
+document.getElementById('sl-copy').addEventListener('click', () => {
+  navigator.clipboard.writeText(slLastScript);
+});
+
+document.getElementById('sl-dl').addEventListener('click', () => {
+  const job = (document.getElementById('sl-job').value.trim()
+               || form.querySelector('[name=label]').value || 'mqct');
+  const blob = new Blob([slLastScript], { type: 'text/plain' });
+  triggerDownload(blob, job.replace(/[^\w.-]/g, '_') + '.sl');
 });
 
 // ---- load an existing .inp file ----------------------------------------
@@ -952,10 +1734,111 @@ function applyParsedFields(fields) {
       el.value = val;
     }
   });
+  // 3b. rebuild the channel builder rows from the loaded chnls_list text
+  if (fields.chnls_list) {
+    const rows = fields.chnls_list.split('\n')
+      .map(line => line.trim())
+      .filter(line => line !== '')
+      .map(line => line.split(',').map(t => t.trim()));
+    rebuildChannelBuilder(rows);
+  } else {
+    rebuildChannelBuilder();
+  }
+  // 3c. if INIT_CHNL matches a row, check that row's "initial" radio
+  const initVal = (fields.init_chnl || '').replace(/\s/g, '');
+  if (initVal) {
+    document.querySelectorAll('#chan-rows .chanrow').forEach(r => {
+      const vals = [...r.querySelectorAll('.chancell input')]
+        .map(i => i.value.trim());
+      if (vals.join(',') === initVal) {
+        const radio = r.querySelector('.chaninit-radio');
+        if (radio) radio.checked = true;
+      }
+    });
+  }
   // 4. re-run dependent toggles (Monte-Carlo trajectory field, etc.)
   applySysType();
   if (fields.chan_mode) applyChanMode();
+  // restore the oblate/prolate segment if present
+  if (fields.top_shape) {
+    setSegment('shape-seg', 'top_shape', 'shape', fields.top_shape);
+  }
+  syncChannels();
 }
+
+// ---- save / load the whole form as a JSON setup file ------------------
+// Captures the raw form state -- including incomplete fields -- so a
+// half-finished setup can be parked and resumed, or shared exactly.
+function collectFormState() {
+  const state = {};
+  // every named control in the form
+  form.querySelectorAll('input, select, textarea').forEach(el => {
+    if (!el.name) return;
+    if (el.type === 'checkbox') {
+      if (el.checked) state[el.name] = 'on';
+    } else if (el.type === 'radio') {
+      if (el.checked) state[el.name] = el.value;
+    } else {
+      if (el.value !== '') state[el.name] = el.value;
+    }
+  });
+  // hidden state driven by segmented controls / the channel builder
+  state.sys_type   = sysSelect.value;
+  state.chan_mode  = document.getElementById('chan_mode').value;
+  state.top_shape  = document.getElementById('top_shape').value;
+  state.run_mode   = document.getElementById('run-mode').value;
+  syncChannels();
+  state.chnls_list = document.getElementById('chnls_list').value;
+  return state;
+}
+
+document.getElementById('save-json').addEventListener('click', () => {
+  const state = collectFormState();
+  const payload = {
+    _format: 'mqct-gui-setup',
+    _version: 1,
+    fields: state,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)],
+                        { type: 'application/json' });
+  const fname = (state.label || 'mqct').replace(/[^\w.-]/g, '_')
+                + '_setup.json';
+  triggerDownload(blob, fname);
+  const note = document.getElementById('load-note');
+  note.className = 'loadnote ok';
+  note.textContent = 'Saved setup as ' + fname + '.';
+});
+
+document.getElementById('json-file').addEventListener('change', (ev) => {
+  const file = ev.target.files[0];
+  const note = document.getElementById('load-note');
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data || data._format !== 'mqct-gui-setup' || !data.fields) {
+        note.className = 'loadnote err';
+        note.textContent = 'Not a valid MQCT GUI setup file.';
+        return;
+      }
+      applyParsedFields(data.fields);
+      // run_mode is not handled by applyParsedFields -- set it directly
+      if (data.fields.run_mode) {
+        const rm = document.getElementById('run-mode');
+        rm.value = data.fields.run_mode;
+        rm.dispatchEvent(new Event('change'));
+      }
+      note.className = 'loadnote ok';
+      note.textContent = 'Loaded setup from ' + file.name + '.';
+    } catch (e) {
+      note.className = 'loadnote err';
+      note.textContent = 'Could not read setup file: ' + e;
+    }
+  };
+  reader.readAsText(file);
+  ev.target.value = '';   // allow re-loading the same file
+});
 
 document.getElementById('inp-file').addEventListener('change', async (ev) => {
   const file = ev.target.files[0];
@@ -988,6 +1871,37 @@ document.getElementById('inp-file').addEventListener('change', async (ev) => {
     note.textContent = 'Load failed: ' + e;
   }
   ev.target.value = '';   // allow re-loading the same file
+});
+
+// ---- load a bundled preset --------------------------------------------
+document.getElementById('preset-select').addEventListener('change', async (ev) => {
+  const name = ev.target.value;
+  const note = document.getElementById('load-note');
+  if (!name) return;
+  note.className = 'loadnote';
+  note.textContent = 'Loading preset ...';
+  try {
+    const resp = await fetch('/preset/' + encodeURIComponent(name));
+    const res = await resp.json();
+    if (!res.ok) {
+      note.className = 'loadnote err';
+      note.textContent = res.error || 'Could not load preset.';
+      return;
+    }
+    applyParsedFields(res.fields);
+    const label = ev.target.options[ev.target.selectedIndex].text;
+    let msg = 'Loaded preset: ' + label + '.';
+    if (res.notes && res.notes.length) {
+      msg += ' ' + res.notes.length + ' keyword(s) not editable here.';
+      note.className = 'loadnote err';
+    } else {
+      note.className = 'loadnote ok';
+    }
+    note.textContent = msg;
+  } catch (e) {
+    note.className = 'loadnote err';
+    note.textContent = 'Preset load failed: ' + e;
+  }
 });
 
 sysSelect.addEventListener('change', applySysType);
